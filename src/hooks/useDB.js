@@ -32,6 +32,19 @@ async function q(promise) {
   return data;
 }
 
+const CACHE_KEY = 'useDB_cache_v1';
+
+async function saveCache(data) {
+  try { await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (_) {}
+}
+
+async function loadCache() {
+  try {
+    const raw = await AsyncStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (_) { return null; }
+}
+
 export function useDB() {
   const [incidents,   setI] = useState([]);
   const [alerts,      setA] = useState([]);
@@ -54,30 +67,86 @@ export function useDB() {
         sb.from('users').select('*'),
         sb.from('activity_log').select('*').order('created_at', { ascending: false }).limit(150),
       ]);
-      const g = x => x.status === 'fulfilled' ? (x.value.data || []) : [];
-      let us = g(ru);
-      if (us.length === 0) {
-        const { data: s } = await sb.from('users').insert([
-          { name: 'Admin User', email: 'admin@kauswagan.gov.ph', password: 'admin123', role: 'Admin', status: 'Active' },
-        ]).select();
-        us = s || [];
+
+      // Only update state if the fetch actually returned data
+      const use = (result, mapper, setter, fallbackSetter) => {
+        if (result.status === 'fulfilled' && result.value.data && result.value.data.length >= 0 && !result.value.error) {
+          const mapped = result.value.data.map(mapper || (x => x));
+          setter(mapped);
+          return mapped;
+        }
+        // Keep existing state
+        return null;
+      };
+
+      const mappedI = use(ri, ni, setI);
+      const mappedA = use(ra, x => x, setA);
+      const mappedE = use(re, ne, setE);
+      const mappedR = use(rr, nr, setR);
+      const mappedS = use(rs, x => x, setS);
+      const mappedL = use(rl, na, setL);
+
+      let us = null;
+      if (ru.status === 'fulfilled' && ru.value.data) {
+        us = ru.value.data;
+        if (us.length === 0) {
+          const { data: s } = await sb.from('users').insert([
+            { name: 'Admin User', email: 'admin@kauswagan.gov.ph', password: 'admin123', role: 'Admin', status: 'Active' },
+          ]).select();
+          us = s || [];
+        }
+        setU(us);
       }
-      setI(g(ri).map(ni));
-      setA(g(ra));
-      setE(g(re).map(ne));
-      setR(g(rr).map(nr));
-      setS(g(rs));
-      setU(us);
-      setL(g(rl).map(na));
+
+      // Persist successful fetches to cache
+      const cacheUpdate = {};
+      if (mappedI) cacheUpdate.incidents   = mappedI;
+      if (mappedA) cacheUpdate.alerts      = mappedA;
+      if (mappedE) cacheUpdate.evacCenters = mappedE;
+      if (mappedR) cacheUpdate.residents   = mappedR;
+      if (mappedS) cacheUpdate.resources   = mappedS;
+      if (us)      cacheUpdate.users       = us;
+      if (mappedL) cacheUpdate.activityLog = mappedL;
+      if (Object.keys(cacheUpdate).length > 0) {
+        const existing = await loadCache() || {};
+        saveCache({ ...existing, ...cacheUpdate });
+      }
+
     } catch (err) {
-      console.warn('DB error:', err);
-      setU([{ id: 'local1', name: 'Admin', email: 'admin@kauswagan.gov.ph', password: 'admin123', role: 'Admin', status: 'Active' }]);
+      console.warn('DB reload error:', err);
+      // Iya e try ug restore from cache if nay error
+      const cache = await loadCache();
+      if (cache) {
+        if (cache.incidents)   setI(cache.incidents);
+        if (cache.alerts)      setA(cache.alerts);
+        if (cache.evacCenters) setE(cache.evacCenters);
+        if (cache.residents)   setR(cache.residents);
+        if (cache.resources)   setS(cache.resources);
+        if (cache.activityLog) setL(cache.activityLog);
+        if (cache.users)       setU(cache.users);
+      } else {
+        setU([{ id: 'local1', name: 'Admin', email: 'admin@kauswagan.gov.ph', password: 'admin123', role: 'Admin', status: 'Active' }]);
+      }
     } finally {
       setLoad(false);
     }
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    // Load cached data immediately para dili mag blanko ang UI while fetching
+    loadCache().then(cache => {
+      if (cache) {
+        if (cache.incidents)   setI(cache.incidents);
+        if (cache.alerts)      setA(cache.alerts);
+        if (cache.evacCenters) setE(cache.evacCenters);
+        if (cache.residents)   setR(cache.residents);
+        if (cache.resources)   setS(cache.resources);
+        if (cache.activityLog) setL(cache.activityLog);
+        if (cache.users)       setU(cache.users);
+      }
+    });
+    reload();
+  }, [reload]);
 
   const log = useCallback((action, type, user, urgent) => {
     setL(p => [{ id: lid(), action, type, userName: user || 'System', urgent: !!urgent, createdAt: now() }, ...p].slice(0, 150));
@@ -120,7 +189,8 @@ export function useDB() {
 
   // Alerts
   const addAlert = useCallback(async (d, user) => {
-    const rec = await q(sb.from('alerts').insert([{ title: d.level + ' — ' + d.zone, message: d.message, level: d.level, zone: d.zone, channel: 'Mobile', recipients_count: d.zone === 'All Zones' ? 1284 : Math.floor(Math.random() * 300 + 150), sent_by: user }]).select().single());
+    const recipientsCount = (d.recipientsCount !== undefined && d.recipientsCount !== null) ? d.recipientsCount : 0;
+    const rec = await q(sb.from('alerts').insert([{ title: d.level + ' — ' + d.zone, message: d.message, level: d.level, zone: d.zone, channel: 'Mobile', recipients_count: recipientsCount, sent_by: user }]).select().single());
     setA(prev => [rec, ...prev]);
     log(d.level + ' alert to ' + d.zone, 'Alert', user, d.level === 'Danger');
   }, [log]);
@@ -155,19 +225,31 @@ export function useDB() {
   const addResident = useCallback(async (d, user) => {
     const p = gps(d.zone);
     const rec = await q(sb.from('residents').insert([{ name: d.name, zone: d.zone, address: d.address || '', household_members: parseInt(d.householdMembers) || 1, contact: d.contact || '', evacuation_status: d.evacuationStatus || 'Safe', vulnerability_tags: d.vulnerabilityTags || [], notes: d.notes || '', added_by: user || 'Mobile', lat: p.lat, lng: p.lng }]).select().single());
-    setR(prev => [nr(rec), ...prev]);
+    setR(prev => {
+      const next = [nr(rec), ...prev];
+      loadCache().then(c => saveCache({ ...(c || {}), residents: next }));
+      return next;
+    });
     log('Resident added: ' + d.name, 'Resident', user);
   }, [log]);
 
   const updateResident = useCallback(async (id, d, user) => {
     const rec = await q(sb.from('residents').update({ name: d.name, zone: d.zone, address: d.address || '', household_members: parseInt(d.householdMembers) || 1, contact: d.contact || '', evacuation_status: d.evacuationStatus || 'Safe', vulnerability_tags: d.vulnerabilityTags || [], notes: d.notes || '' }).eq('id', id).select().single());
-    setR(prev => prev.map(r => r.id === id ? nr(rec) : r));
+    setR(prev => {
+      const next = prev.map(r => r.id === id ? nr(rec) : r);
+      loadCache().then(c => saveCache({ ...(c || {}), residents: next }));
+      return next;
+    });
     log('Resident updated: ' + d.name, 'Resident', user);
   }, [log]);
 
   const deleteResident = useCallback(async (id, name, user) => {
     await q(sb.from('residents').delete().eq('id', id));
-    setR(prev => prev.filter(r => r.id !== id));
+    setR(prev => {
+      const next = prev.filter(r => r.id !== id);
+      loadCache().then(c => saveCache({ ...(c || {}), residents: next }));
+      return next;
+    });
     log('Resident deleted: ' + (name || ''), 'Resident', user, true);
   }, [log]);
 
