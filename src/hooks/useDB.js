@@ -118,8 +118,10 @@ export function useDB() {
   }, [log]);
 
   const addAlert = useCallback(async (d, user) => {
-    const rec = await q(sb.from('alerts').insert([{ title: d.level + ' — ' + d.zone, message: d.message, level: d.level, zone: d.zone, channel: 'Mobile', recipients_count: d.zone === 'All Zones' ? 1284 : Math.floor(Math.random() * 300 + 150), sent_by: user }]).select().single());
-    setA(prev => [rec, ...prev]);
+    const count = d.recipients_count ?? d.smsCount ?? 0;
+    const insertData = { title: d.level + ' — ' + d.zone, message: d.message, level: d.level, zone: d.zone, recipients_count: count, sent_by: user || 'System' };
+    const rec = await q(sb.from('alerts').insert([insertData]).select().single());
+    setA(prev => [{ ...rec, recipients_count: count }, ...prev]);
     log(d.level + ' alert to ' + d.zone, 'Alert', user, d.level === 'Danger');
   }, [log]);
 
