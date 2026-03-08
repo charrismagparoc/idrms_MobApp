@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "IDRMS",
+    "slug": "idrms-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": { "backgroundColor": "#0c1120" },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ph.gov.kauswagan.idrms"
+    },
+    "android": {
+      "adaptiveIcon": { "backgroundColor": "#0c1120" },
+      "package": "ph.gov.kauswagan.idrms"
+    },
+    "experiments": {
+      "newArchEnabled": false
+    }
+  }
+}
