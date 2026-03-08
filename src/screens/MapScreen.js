@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Sidebar } from '../components/Sidebar';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { ZONE_SUBDIVISIONS } from '../data/constants';
 import { C } from '../styles/colors';
+import { styles } from '../styles/mapScreenStyles';
 
 const MAP_CENTER = [8.4942, 124.6447];
 const INC_COLOR = {
@@ -248,7 +248,6 @@ export default function MapScreen({ navigation }) {
         updateLayers();
         updateLabels();
 
-        // Add Barangay Hall marker
         L.marker(MAP_CENTER, {
           icon: L.divIcon({
             html: '<div style="background:linear-gradient(135deg,#9b72cf,#7050a8);color:#fff;border-radius:8px;padding:4px 11px;font-size:10px;font-weight:800;border:1.5px solid rgba(255,255,255,.7);box-shadow:0 3px 10px rgba(0,0,0,.5)">🏛 HALL</div>',
@@ -282,19 +281,21 @@ export default function MapScreen({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       {/* HEADER */}
-      <View style={s.headerContainer}>
-        <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.hamburger}>
-          <Text style={s.hamburgerText}>☰</Text>
+      <View style={styles.headerContainer}>
+        <TouchableOpacity onPress={() => setSidebarOpen(true)} style={styles.hamburger}>
+          <Text style={styles.hamburgerText}>☰</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>GIS Map</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit>GIS Map</Text>
+          <Text style={styles.headerSub} numberOfLines={2}>Live situational awareness</Text>
+        </View>
       </View>
 
       {/* MAP */}
       <WebView
         ref={webViewRef}
         source={{ html: mapHTML }}
-        style={s.webview}
+        style={styles.webview}
         onMessage={handleWebViewMessage}
         originWhitelist={['*']}
         scalesPageToFit={true}
@@ -318,35 +319,3 @@ export default function MapScreen({ navigation }) {
     </View>
   );
 }
-
-const s = StyleSheet.create({
-  headerContainer: {
-    backgroundColor: C.card,
-    borderBottomColor: C.border,
-    borderBottomWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    zIndex: 10,
-  },
-  hamburger: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  hamburgerText: {
-    fontSize: 24,
-    color: C.t1,
-  },
-  headerTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: C.t1,
-    flex: 1,
-    textAlign: 'center',
-  },
-  webview: {
-    flex: 1,
-  },
-});

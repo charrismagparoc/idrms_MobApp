@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react';
 import {
-    Animated,
-    Dimensions,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { C } from '../styles/colors';
 
@@ -43,6 +43,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingVertical: 24,
+    paddingTop: 40,
     borderBottomColor: C.border,
     borderBottomWidth: 1,
   },
@@ -164,7 +165,7 @@ export function Sidebar({
     { name: 'Resources', icon: '📦', label: 'Resources' },
     { name: 'Risk', icon: '📊', label: 'Risk' },
     { name: 'Reports', icon: '📈', label: 'Reports' },
-    { name: 'Users', icon: '👥', label: 'Users' },
+    { name: 'Users', icon: '👤', label: 'Users' },
     { name: 'ActivityLog', icon: '📋', label: 'Activity Log' },
     { name: 'Map', icon: '🗺️', label: 'GIS Map' },
   ];
@@ -185,7 +186,7 @@ export function Sidebar({
           { transform: [{ translateX: slideAnim }] },
         ]}
       >
-        <SafeAreaView style={{ flex: 1 }}>
+        <SafeAreaView style={{ flex: 1, flexDirection: 'column' }}>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>IDRMS</Text>

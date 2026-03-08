@@ -1,29 +1,23 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, SecHdr } from '../components/Shared';
 import { Sidebar } from '../components/Sidebar';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { useRisk } from '../hooks/useRisk';
 import { useWeather } from '../hooks/useWeather';
 import { C, TYPE_COLOR } from '../styles/colors';
+import { styles as s } from '../styles/dashboardScreenStyles';
 
 function KCard({ emoji, value, label, color }) {
   return (
-    <View style={[k.card, { borderColor: (color || C.blue) + '30' }]}>
-      <Text style={k.emoji}>{emoji}</Text>
-      <Text style={[k.val, { color: color || C.blue }]}>{value ?? 0}</Text>
-      <Text style={k.lbl}>{label}</Text>
+    <View style={[{ flex: 1, backgroundColor: C.card, borderRadius: 12, padding: 11, alignItems: 'center', borderWidth: 1, minWidth: 74, borderColor: (color || C.blue) + '30' }]}>
+      <Text style={{ fontSize: 16, marginBottom: 3 }}>{emoji}</Text>
+      <Text style={[{ fontSize: 20, fontWeight: '800', lineHeight: 24 }, { color: color || C.blue }]}>{value ?? 0}</Text>
+      <Text style={{ fontSize: 8.5, color: C.t3, textAlign: 'center', marginTop: 2, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 }}>{label}</Text>
     </View>
   );
 }
-const k = StyleSheet.create({
-  card:  { flex: 1, backgroundColor: C.card, borderRadius: 12, padding: 11, alignItems: 'center', borderWidth: 1, minWidth: 74 },
-  emoji: { fontSize: 16, marginBottom: 3 },
-  val:   { fontSize: 20, fontWeight: '800', lineHeight: 24 },
-  lbl:   { fontSize: 8.5, color: C.t3, textAlign: 'center', marginTop: 2, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
-});
 
 const RISK_C = { High: C.red, Medium: C.orange, Low: C.green };
 
@@ -49,8 +43,10 @@ export default function DashboardScreen({ navigation }) {
         <TouchableOpacity onPress={() => setSidebarOpen(true)} style={s.hamburger}>
           <Text style={s.hamburgerText}>☰</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Dashboard</Text>
-        <View style={{ width: 40 }} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.headerTitle} numberOfLines={1} adjustsFontSizeToFit>Dashboard</Text>
+          <Text style={s.headerSub} numberOfLines={2}>Overview and insights</Text>
+        </View>
       </View>
 
       <ScrollView style={s.screen} contentContainerStyle={s.pad} refreshControl={<RefreshControl refreshing={busy} onRefresh={onRefresh} tintColor={C.blue} />}>
@@ -77,18 +73,24 @@ export default function DashboardScreen({ navigation }) {
           <View style={[s.dot, { backgroundColor: oc }]} />
         </View>
 
-        <View style={s.row}><KCard emoji="⚠️" value={incidents.length}                                         label="Total Inc."  color={C.orange} />
-          <KCard emoji="🔴" value={activeInc.length}                                                           label="Active"      color={C.red}    />
-          <KCard emoji="✅" value={incidents.filter(i => i.status === 'Resolved').length}                      label="Resolved"    color={C.green}  />
-          <KCard emoji="📢" value={alerts.length}                                                              label="Alerts"      color={C.blue}   /></View>
-        <View style={[s.row, s.mt0]}><KCard emoji="🏠" value={evacCenters.filter(c => c.status === 'Open').length} label="Open Ctr."  color={C.green}  />
-          <KCard emoji="👥" value={totalOcc}                                                                   label="Evacuees"    color={C.purple} />
-          <KCard emoji="🔴" value={highCount}                                                                  label="High Risk"   color={C.red}    />
-          <KCard emoji="👤" value={residents.length}                                                           label="Residents"   color={C.blue}   /></View>
-        <View style={[s.row, s.mt0]}><KCard emoji="🚨" value={highCount}                                       label="High"        color={C.red}    />
-          <KCard emoji="⚡" value={medCount}                                                                   label="Medium"      color={C.orange} />
-          <KCard emoji="🟢" value={lowCount}                                                                   label="Low"         color={C.green}  />
-          <KCard emoji="📢" value={alerts.filter(a => a.level === 'Danger').length}                            label="Danger Alts" color={C.red}    /></View>
+        <View style={s.row}>
+          <KCard emoji="⚠️" value={incidents.length} label="Total Inc." color={C.orange} />
+          <KCard emoji="🔴" value={activeInc.length} label="Active" color={C.red} />
+          <KCard emoji="✅" value={incidents.filter(i => i.status === 'Resolved').length} label="Resolved" color={C.green} />
+          <KCard emoji="📢" value={alerts.length} label="Alerts" color={C.blue} />
+        </View>
+        <View style={[s.row, s.mt0]}>
+          <KCard emoji="🏠" value={evacCenters.filter(c => c.status === 'Open').length} label="Open Ctr." color={C.green} />
+          <KCard emoji="👥" value={totalOcc} label="Evacuees" color={C.purple} />
+          <KCard emoji="🔴" value={highCount} label="High Risk" color={C.red} />
+          <KCard emoji="👤" value={residents.length} label="Residents" color={C.blue} />
+        </View>
+        <View style={[s.row, s.mt0]}>
+          <KCard emoji="🚨" value={highCount} label="High" color={C.red} />
+          <KCard emoji="⚡" value={medCount} label="Medium" color={C.orange} />
+          <KCard emoji="🟢" value={lowCount} label="Low" color={C.green} />
+          <KCard emoji="📢" value={alerts.filter(a => a.level === 'Danger').length} label="Danger Alts" color={C.red} />
+        </View>
 
         <View style={s.card}>
           <SecHdr title="Active Incidents" count={activeInc.length} right="All →" onRight={() => navigation.navigate('Incidents')} />
@@ -113,8 +115,8 @@ export default function DashboardScreen({ navigation }) {
               <Text style={s.zname}>{z.zone}</Text>
               <View style={s.ztrack}><View style={[s.zfill, { width: z.score + '%', backgroundColor: z.riskColor }]} /></View>
               <Text style={[s.zscore, { color: z.riskColor }]}>{z.score}</Text>
-              <View style={[s.rpill, { backgroundColor: z.riskColor + '22', marginLeft: 0 }]}>
-                <Text style={[s.rpillTxt, { color: z.riskColor }]}>{z.riskLabel}</Text>
+              <View style={[{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, marginLeft: 0, backgroundColor: z.riskColor + '22' }]}>
+                <Text style={[{ fontSize: 9, fontWeight: '800', letterSpacing: 0.3, color: z.riskColor }]}>{z.riskLabel}</Text>
               </View>
             </View>
           ))}
@@ -154,62 +156,3 @@ export default function DashboardScreen({ navigation }) {
     </View>
   );
 }
-
-const s = StyleSheet.create({
-  headerContainer: {
-    backgroundColor: C.card,
-    borderBottomColor: C.border,
-    borderBottomWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  hamburger: {
-    padding: 8,
-    marginLeft: -8,
-  },
-  hamburgerText: {
-    fontSize: 24,
-    color: C.t1,
-  },
-  headerTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: C.t1,
-    flex: 1,
-    textAlign: 'center',
-  },
-  screen: { flex: 1, backgroundColor: C.bg },
-  pad:    { padding: 14 },
-  hdr:    { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 13 },
-  appName:{ fontSize: 22, fontWeight: '800', color: C.t1 },
-  appSub: { fontSize: 10, color: C.t3, marginTop: 2, fontWeight: '600' },
-  hdrR:   { alignItems: 'flex-end', gap: 6 },
-  wchip:  { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.el, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1 },
-  wTxt:   { fontSize: 11, color: C.t1, fontWeight: '600' },
-  rpill:  { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, marginLeft: 4 },
-  rpillTxt:{ fontSize: 9, fontWeight: '800', letterSpacing: 0.4 },
-  banner: { borderRadius: 12, borderWidth: 1.5, padding: 13, marginBottom: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  bannerLbl: { fontSize: 10, color: C.t3, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
-  bannerVal: { fontSize: 17, fontWeight: '800', marginTop: 2 },
-  dot:    { width: 13, height: 13, borderRadius: 7 },
-  row:    { flexDirection: 'row', gap: 7, marginBottom: 7 },
-  mt0:    { marginTop: 0 },
-  card:   { backgroundColor: C.card, borderRadius: 13, padding: 13, marginBottom: 11, borderWidth: 1, borderColor: C.border },
-  empty:  { color: C.t3, fontSize: 13, textAlign: 'center', paddingVertical: 8 },
-  irow:   { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: C.border },
-  idot:   { width: 7, height: 7, borderRadius: 4, flexShrink: 0 },
-  ititle: { fontSize: 13, fontWeight: '700', color: C.t1 },
-  isub:   { fontSize: 11, color: C.t3, marginTop: 1 },
-  zrow:   { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 9 },
-  zname:  { fontSize: 11, fontWeight: '700', color: C.t2, width: 46 },
-  ztrack: { flex: 1, height: 7, backgroundColor: C.el, borderRadius: 4, overflow: 'hidden' },
-  zfill:  { height: '100%', borderRadius: 4 },
-  zscore: { fontSize: 12, fontWeight: '800', width: 24, textAlign: 'right' },
-  arow:   { flexDirection: 'row', alignItems: 'flex-start', gap: 9, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.border },
-  adot:   { width: 6, height: 6, borderRadius: 3, marginTop: 5, flexShrink: 0 },
-  atxt:   { fontSize: 12, color: C.t1, fontWeight: '500' },
-  ameta:  { fontSize: 10, color: C.t3, marginTop: 2 },
-});
