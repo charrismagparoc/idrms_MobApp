@@ -111,7 +111,7 @@ export function DropFilter({ label, value, opts, onSelect, color }) {
       </Modal>
     </View>
   );
-} 
+}
 const df = StyleSheet.create({
   wrap:       { flex: 1, minWidth: 90 },
   label:      { fontSize: 10, color: C.t3, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },

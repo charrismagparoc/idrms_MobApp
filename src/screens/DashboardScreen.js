@@ -28,21 +28,28 @@ const RISK_C = { High: C.red, Medium: C.orange, Low: C.green };
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
-  const { incidents, alerts, evacCenters, residents, activityLog, reload } = useApp();
+  const { incidents, alerts, evacCenters, residents, activityLog, resources, reload } = useApp();
   const w = useWeather();
   const { zoneRisks, highCount, medCount, lowCount, overallScore } = useRisk(residents, incidents, w);
   const [busy, setBusy] = useState(false);
 
-  const activeInc = incidents.filter(i => ['Active', 'Pending'].includes(i.status));
-  const totalOcc  = evacCenters.reduce((a, c) => a + (c.occupancy || 0), 0);
+  const activeInc     = incidents.filter(i => ['Active', 'Pending'].includes(i.status));
+  const totalOcc      = evacCenters.reduce((a, c) => a + (c.occupancy || 0), 0);
+  const totalCap      = evacCenters.reduce((a, c) => a + (c.capacity || 0), 0);
   const oc = overallScore >= 70 ? C.red : overallScore >= 40 ? C.orange : C.green;
   const ol = overallScore >= 70 ? 'HIGH RISK' : overallScore >= 40 ? 'MEDIUM RISK' : 'LOW RISK';
+
+  // Resource stats
+  const totalItems    = (resources || []).length;
+  const totalAvail    = (resources || []).filter(r => r.status === 'Available').length;
+  const lowStockCount = (resources || []).filter(r => r.status === 'Low Stock' || (r.quantity > 0 && (r.available / r.quantity) < 0.2)).length;
+  const depletedCount = (resources || []).filter(r => r.available === 0 || r.status === 'Depleted').length;
 
   async function onRefresh() { setBusy(true); await reload(); setBusy(false); }
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
-      {/* Top Bar with Title and Logout */}
+      {/* Top Bar */}
       <View style={[s.topBar, { paddingTop: insets.top + 13 }]}>
         <View style={s.logoRow}>
           <Ionicons name="shield-checkmark" size={20} color={C.blue} />
@@ -53,7 +60,7 @@ export default function DashboardScreen() {
       <ScrollView style={{ flex: 1 }} contentContainerStyle={s.pad}
         refreshControl={<RefreshControl refreshing={busy} onRefresh={onRefresh} tintColor={C.blue} />}>
 
-        {/* weather row */}
+        {/* Weather row */}
         <View style={s.topRow}>
           <View>
             <Text style={s.appName}>IDRMS</Text>
@@ -77,24 +84,74 @@ export default function DashboardScreen() {
           <Ionicons name="shield-outline" size={28} color={oc} />
         </View>
 
-        {/* KPI grid */}
+        {/* KPI grid — Row 1 */}
         <View style={s.row}>
-          <KPI value={incidents.length}                                  label="Total Inc."  color={C.orange} iconName="warning-outline"       />
-          <KPI value={activeInc.length}                                  label="Active"      color={C.red}    iconName="alert-circle-outline"   />
-          <KPI value={incidents.filter(i=>i.status==='Resolved').length} label="Resolved"    color={C.green}  iconName="checkmark-circle-outline"/>
-          <KPI value={alerts.length}                                     label="Alerts"      color={C.blue}   iconName="megaphone-outline"       />
+          <KPI value={incidents.length}                                  label="Total Inc."  color={C.orange} iconName="warning-outline"        />
+          <KPI value={activeInc.length}                                  label="Active"      color={C.red}    iconName="alert-circle-outline"    />
+          <KPI value={incidents.filter(i=>i.status==='Resolved').length} label="Resolved"    color={C.green}  iconName="checkmark-circle-outline" />
+          <KPI value={alerts.length}                                     label="Alerts"      color={C.blue}   iconName="megaphone-outline"        />
         </View>
+
+        {/* KPI grid — Row 2 */}
         <View style={[s.row, { marginTop: 0 }]}>
-          <KPI value={evacCenters.filter(c=>c.status==='Open').length}   label="Open Ctrs"   color={C.green}  iconName="location-outline"        />
-          <KPI value={totalOcc}                                          label="Evacuees"    color={C.purple} iconName="people-outline"          />
-          <KPI value={highCount}                                         label="High Risk"   color={C.red}    iconName="flame-outline"           />
-          <KPI value={residents.length}                                  label="Residents"   color={C.blue}   iconName="person-outline"          />
+          <KPI value={evacCenters.filter(c=>c.status==='Open').length}   label="Open Ctrs"   color={C.green}  iconName="location-outline"  />
+          <KPI value={totalOcc}                                          label="Evacuees"    color={C.purple} iconName="people-outline"    />
+          <KPI value={totalCap - totalOcc}                               label="Remaining"   color={C.orange} iconName="swap-horizontal"   />
+          <KPI value={highCount}                                         label="High Risk"   color={C.red}    iconName="flame-outline"     />
+          <KPI value={residents.length}                                  label="Residents"   color={C.blue}   iconName="person-outline"    />
+        </View>
+
+        {/* Resource Availability */}
+        <View style={s.section}>
+          <SecHdr title="Resource Availability" right="View All" onRight={() => {}} />
+          <View style={s.resGrid}>
+
+            {/* Total Items */}
+            <View style={[s.resCard, { borderColor: C.blue + '33' }]}>
+              <View style={s.resCardTop}>
+                <Ionicons name="cube-outline" size={15} color={C.blue} />
+                <Text style={[s.resVal, { color: C.blue }]}>{totalItems}</Text>
+              </View>
+              <Text style={s.resLbl}>Total Items</Text>
+              <Bar value={totalItems} max={totalItems || 1} height={5} color={C.blue} />
+            </View>
+
+            {/* Available */}
+            <View style={[s.resCard, { borderColor: C.green + '33' }]}>
+              <View style={s.resCardTop}>
+                <Ionicons name="checkmark-circle-outline" size={15} color={C.green} />
+                <Text style={[s.resVal, { color: C.green }]}>{totalAvail}</Text>
+              </View>
+              <Text style={s.resLbl}>Available</Text>
+              <Bar value={totalAvail} max={totalItems || 1} height={5} color={C.green} />
+            </View>
+
+            {/* Low Stock */}
+            <View style={[s.resCard, { borderColor: (lowStockCount > 0 ? C.red : C.t3) + '33' }]}>
+              <View style={s.resCardTop}>
+                <Ionicons name="warning-outline" size={15} color={lowStockCount > 0 ? C.red : C.t3} />
+                <Text style={[s.resVal, { color: lowStockCount > 0 ? C.red : C.t3 }]}>{lowStockCount}</Text>
+              </View>
+              <Text style={s.resLbl}>Low Stock</Text>
+              <Bar value={lowStockCount} max={totalItems || 1} height={5} color={lowStockCount > 0 ? C.red : C.t3} />
+            </View>
+
+          </View>
+
+          {/* Depleted warning row */}
+          {depletedCount > 0 && (
+            <View style={s.depletedRow}>
+              <Ionicons name="alert-circle" size={13} color="#fff" />
+              <Text style={s.depletedTxt}>
+                {depletedCount} resource{depletedCount > 1 ? 's' : ''} fully depleted — restock needed
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Active Incidents table */}
         <View style={s.section}>
-          <SecHdr title="Active Incidents" count={activeInc.length} right="View All"
-            onRight={() => {}} />
+          <SecHdr title="Active Incidents" count={activeInc.length} right="View All" onRight={() => {}} />
           {activeInc.length === 0
             ? <Text style={s.empty}>All clear — no active incidents</Text>
             : (
@@ -172,30 +229,38 @@ export default function DashboardScreen() {
 }
 
 const s = StyleSheet.create({
-  pad:        { padding: 12 },
-  topBar:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 16, backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: C.border },
-  logoRow:    { flexDirection: 'row', alignItems: 'center', gap: 7 },
-  title:      { fontSize: 17, fontWeight: '800', color: C.t1 },
-  topRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  appName:    { fontSize: 20, fontWeight: '800', color: C.t1 },
-  appSub:     { fontSize: 10, color: C.t3, marginTop: 2, fontWeight: '600' },
-  weatherChip:{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.el, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
-  weatherTxt: { fontSize: 11, color: C.t1, fontWeight: '600' },
-  rPill:      { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
-  rPillTxt:   { fontSize: 9, fontWeight: '800' },
-  banner:     { borderRadius: 10, borderWidth: 1.5, padding: 13, marginBottom: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  bannerLbl:  { fontSize: 9, color: C.t3, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
-  bannerVal:  { fontSize: 15, fontWeight: '800' },
-  row:        { flexDirection: 'row', gap: 6, marginBottom: 6 },
-  section:    { backgroundColor: C.card, borderRadius: 10, padding: 13, marginBottom: 10, borderWidth: 1, borderColor: C.border },
-  empty:      { color: C.t3, fontSize: 12, textAlign: 'center', paddingVertical: 10 },
-  tableWrap:  { borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
-  thead:      { flexDirection: 'row', paddingVertical: 8, paddingHorizontal: 10, backgroundColor: C.el },
-  th:         { fontSize: 9, fontWeight: '700', color: C.t3, letterSpacing: 0.4 },
-  trow:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 10, borderTopWidth: 1, borderTopColor: C.border },
-  zebra:      { backgroundColor: 'rgba(255,255,255,0.02)' },
-  td:         { fontSize: 12, color: C.t1 },
-  tdBold:     { fontSize: 12, fontWeight: '700', color: C.t2 },
-  dot:        { width: 7, height: 7, borderRadius: 4, flexShrink: 0 },
-  scoreVal:   { fontSize: 10, fontWeight: '700', marginTop: 3 },
+  pad:         { padding: 12 },
+  topBar:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 16, backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: C.border },
+  logoRow:     { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  title:       { fontSize: 17, fontWeight: '800', color: C.t1 },
+  topRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  appName:     { fontSize: 20, fontWeight: '800', color: C.t1 },
+  appSub:      { fontSize: 10, color: C.t3, marginTop: 2, fontWeight: '600' },
+  weatherChip: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.el, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
+  weatherTxt:  { fontSize: 11, color: C.t1, fontWeight: '600' },
+  rPill:       { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+  rPillTxt:    { fontSize: 9, fontWeight: '800' },
+  banner:      { borderRadius: 10, borderWidth: 1.5, padding: 13, marginBottom: 11, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  bannerLbl:   { fontSize: 9, color: C.t3, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
+  bannerVal:   { fontSize: 15, fontWeight: '800' },
+  row:         { flexDirection: 'row', gap: 6, marginBottom: 6 },
+  section:     { backgroundColor: C.card, borderRadius: 10, padding: 13, marginBottom: 10, borderWidth: 1, borderColor: C.border },
+  empty:       { color: C.t3, fontSize: 12, textAlign: 'center', paddingVertical: 10 },
+  tableWrap:   { borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
+  thead:       { flexDirection: 'row', paddingVertical: 8, paddingHorizontal: 10, backgroundColor: C.el },
+  th:          { fontSize: 9, fontWeight: '700', color: C.t3, letterSpacing: 0.4 },
+  trow:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, paddingHorizontal: 10, borderTopWidth: 1, borderTopColor: C.border },
+  zebra:       { backgroundColor: 'rgba(255,255,255,0.02)' },
+  td:          { fontSize: 12, color: C.t1 },
+  tdBold:      { fontSize: 12, fontWeight: '700', color: C.t2 },
+  dot:         { width: 7, height: 7, borderRadius: 4, flexShrink: 0 },
+  scoreVal:    { fontSize: 10, fontWeight: '700', marginTop: 3 },
+  // Resource Availability
+  resGrid:     { flexDirection: 'row', gap: 8, marginTop: 6 },
+  resCard:     { flex: 1, backgroundColor: C.bg, borderRadius: 10, padding: 10, borderWidth: 1 },
+  resCardTop:  { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 4 },
+  resVal:      { fontSize: 16, fontWeight: '800' },
+  resLbl:      { fontSize: 9, color: C.t3, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 },
+  depletedRow: { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: C.red, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, marginTop: 10 },
+  depletedTxt: { color: '#fff', fontSize: 11, fontWeight: '700', flex: 1 },
 });

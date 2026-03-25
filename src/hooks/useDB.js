@@ -176,8 +176,16 @@ export function useDB() {
   }, [log]);
 
   const updateResource = useCallback(async (id, d, user) => {
-    const { id: _, created_at, updated_at, ...safe } = d;
-    const rec = await q(sb.from('resources').update(safe).eq('id', id).select().single());
+    const rec = await q(sb.from('resources').update({
+      name:      d.name,
+      category:  d.category,
+      quantity:  parseInt(d.quantity)  || 0,
+      available: parseInt(d.available) || 0,
+      unit:      d.unit     || 'pcs',
+      location:  d.location || '',
+      status:    d.status   || 'Available',
+      notes:     d.notes    || '',
+    }).eq('id', id).select().single());
     setS(prev => prev.map(r => r.id === id ? rec : r));
     log('Resource updated: ' + (d.name || ''), 'Resource', user);
   }, [log]);
