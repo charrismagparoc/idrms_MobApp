@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ZONE_COORDS } from '../data/constants';
 
-const API_URL = 'http://192.168.254.157:8000/api'; 
+const API_URL = 'https://julianna-unblossomed-zahra.ngrok-free.dev/api'; 
 
 const now = () => new Date().toISOString();
 let _id = 9000;
