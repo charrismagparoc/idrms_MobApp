@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ZONE_COORDS } from '../data/constants';
 
 const API_URL = 'https://julianna-unblossomed-zahra.ngrok-free.dev/api'; 
@@ -99,7 +99,10 @@ export function useDB() {
       return { ok: true, user: data.user };
     } catch (_) {
       const local = users.find(u => u.email?.toLowerCase() === email.trim().toLowerCase() && u.password === password && u.status === 'Active');
-      if (local) return { ok: true, user: { id: local.id, name: local.name, email: local.email, role: local.role } };
+      if (local) {
+        log('Signed in: ' + local.name, 'Auth', local.name);
+        return { ok: true, user: { id: local.id, name: local.name, email: local.email, role: local.role } };
+      }
       return { ok: false, msg: 'Cannot connect. Make sure Django server is running.' };
     }
   }, [users, log]);
@@ -238,7 +241,7 @@ export function useDB() {
   }, []);
 
   return {
-    loading, reload,
+    loading, reload, log,
     incidents, alerts, evacCenters, residents, resources, users, activityLog,
     loginUser,
     addIncident, updateIncident, deleteIncident,
