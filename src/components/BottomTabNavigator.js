@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { C } from '../styles/colors';
 
@@ -24,7 +25,8 @@ const MORE_TABS = TAB_ITEMS.slice(5);
 
 export function BottomTabNavigator({ currentRoute, onNavigate }) {
   const insets = useSafeAreaInsets();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const { log } = useApp();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
@@ -35,6 +37,7 @@ export function BottomTabNavigator({ currentRoute, onNavigate }) {
 
   const handleLogout = () => {
     setShowLogoutModal(false);
+    if (user) log(`Signed out: ${user.name}`, 'Auth', user.name);
     logout();
   };
 
