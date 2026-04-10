@@ -46,7 +46,7 @@ function AppScreens({ navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="Dashboard"   component={DashboardScreen}   />
+        <Stack.Screen name="Dashboard">{() => <DashboardScreen onNavigate={handleNavigate} />}</Stack.Screen>
         <Stack.Screen name="Alerts"      component={AlertsScreen}      />
         <Stack.Screen name="Evacuation"  component={EvacuationScreen}  />
         <Stack.Screen name="Residents"   component={ResidentsScreen}   />

@@ -29,22 +29,6 @@ const STATUS_COLORS = {
   Unaccounted:  { bg: '#2e1a0d', text: '#f97316', border: '#ea580c' },
 };
 
-function StatBadge({ label, count, color, onPress, active }) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.75}
-      style={[
-        sb.wrap,
-        { borderColor: color + '55', backgroundColor: color + '18' },
-        active && { backgroundColor: color + '38', borderColor: color, borderWidth: 2 },
-      ]}
-    >
-      <Text style={[sb.count, { color }]}>{count}</Text>
-      <Text style={[sb.label, { color }]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
 
 function DropdownPicker({ label, value, opts, onChange, isOpen, onToggle }) {
   return (
@@ -102,8 +86,7 @@ function FormField({ label, value, onChange, placeholder, keyboardType, multilin
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor="#4a5568"
-        keyboardType={keyboardType || 'default'}
+        placeholderTextColor={C.t3}
         multiline={multiline}
       />
     </View>
@@ -213,8 +196,6 @@ export default function ResidentsScreen({ navigation }) {
   const [q, setQ]              = useState('');
   const [fz, setFz]            = useState('All');
   const [fe, setFe]            = useState('All');
-  const [fvuln, setFvuln]      = useState(false);
-  const [ftotal, setFtotal]    = useState(false);
   const [show, setShow]        = useState(false);
   const [openDD, setOpenDD]    = useState(null);
   const [editResident, setEditResident] = useState(null);
@@ -230,15 +211,9 @@ export default function ResidentsScreen({ navigation }) {
     const mq = !q || (r.name + r.address + r.zone).toLowerCase().includes(q.toLowerCase());
     const mz = fz === 'All' || r.zone === fz;
     const me = fe === 'All' || r.evacuationStatus === fe;
-    const mv = !fvuln || (r.vulnerabilityTags || []).length > 0;
-    return mq && mz && me && mv;
+    return mq && mz && me;
   });
 
-  const totalCount       = residents.length;
-  const safeCount        = residents.filter(r => r.evacuationStatus === 'Safe').length;
-  const evacuatedCount   = residents.filter(r => r.evacuationStatus === 'Evacuated').length;
-  const unaccountedCount = residents.filter(r => r.evacuationStatus === 'Unaccounted').length;
-  const vulnerableCount  = residents.filter(r => (r.vulnerabilityTags || []).length > 0).length;
 
   async function handleSave(form) {
     setSaving(true);
@@ -253,14 +228,14 @@ export default function ResidentsScreen({ navigation }) {
 
   async function onRefresh() {
     setBusy(true);
-    setQ(''); setFe('All'); setFz('All'); setFvuln(false); setFtotal(false);
+    setQ(''); setFe('All'); setFz('All');
     try { await reload(); } catch (e) { console.warn(e); }
     setBusy(false);
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0f1a', paddingTop: insets.top }}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0f1a" translucent />
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingTop: insets.top }}>
+      <StatusBar barStyle="light-content" backgroundColor={C.bg} translucent />
 
       {/* HEADER */}
       <View style={s.header}>
@@ -268,8 +243,8 @@ export default function ResidentsScreen({ navigation }) {
           <Ionicons name="shield-checkmark" size={20} color="#38bdf8" />
           <Text style={s.headerTitle}>Resident Management</Text>
         </View>
-        <TouchableOpacity style={s.addBtn} onPress={openAdd}>
-          <Ionicons name="person-add" size={15} color="#0a0f1a" />
+        <TouchableOpacity style={s.addBtn} onPress={openAdd} activeOpacity={0.8}>
+          <Ionicons name="person-add" size={15} color="#fff" />
           <Text style={s.addBtnText}>Add Resident</Text>
         </TouchableOpacity>
       </View>
@@ -278,24 +253,6 @@ export default function ResidentsScreen({ navigation }) {
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={busy} onRefresh={onRefresh} tintColor="#38bdf8" />}
       >
-        {/* Stat Badges */}
-        <View style={s.statRow}>
-          <StatBadge label="TOTAL" count={totalCount} color="#06d6a0"
-            active={ftotal}
-            onPress={() => { setFtotal(v => !v); setFe('All'); setFz('All'); setFvuln(false); }} />
-          <StatBadge label="SAFE" count={safeCount} color="#22c55e"
-            active={fe === 'Safe'}
-            onPress={() => { setFe(fe === 'Safe' ? 'All' : 'Safe'); setFvuln(false); setFz('All'); setFtotal(false); }} />
-          <StatBadge label="EVACUATED" count={evacuatedCount} color="#38bdf8"
-            active={fe === 'Evacuated'}
-            onPress={() => { setFe(fe === 'Evacuated' ? 'All' : 'Evacuated'); setFvuln(false); setFz('All'); setFtotal(false); }} />
-          <StatBadge label="UNACCOUNTED" count={unaccountedCount} color="#f97316"
-            active={fe === 'Unaccounted'}
-            onPress={() => { setFe(fe === 'Unaccounted' ? 'All' : 'Unaccounted'); setFvuln(false); setFz('All'); setFtotal(false); }} />
-          <StatBadge label="VULNERABLE" count={vulnerableCount} color="#a855f7"
-            active={fvuln}
-            onPress={() => { setFvuln(v => !v); setFe('All'); setFz('All'); setFtotal(false); }} />
-        </View>
 
         {/* Search + Filters */}
         <View style={s.controlBar}>
@@ -306,7 +263,7 @@ export default function ResidentsScreen({ navigation }) {
               value={q}
               onChangeText={setQ}
               placeholder="Search name or address..."
-              placeholderTextColor="#4a5568"
+              placeholderTextColor={C.t3}
             />
           </View>
           <View style={s.selects}>
@@ -422,107 +379,100 @@ export default function ResidentsScreen({ navigation }) {
 const s = StyleSheet.create({
   header:        { backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: C.border, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   hamburger:     { padding: 6 },
-  hamburgerText: { fontSize: 24, color: '#94a3b8' },
-  headerTitle:   { fontSize: 16, fontWeight: '800', color: '#f1f5f9', letterSpacing: -0.3, flexShrink: 1 },
-  headerSub:     { fontSize: 10, color: '#4a5568', marginTop: 2, lineHeight: 15, flexShrink: 1 },
-  addBtn:        { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#38bdf8', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
-  addBtnText:    { color: '#0a0f1a', fontWeight: '800', fontSize: 12 },
-  statRow:       { flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 14, flexWrap: 'wrap', justifyContent: 'center' },
-  controlBar:    { paddingHorizontal: 14, paddingBottom: 12, gap: 10 },
-  searchWrap:    { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0d1424', borderWidth: 1, borderColor: '#1e293b', borderRadius: 10, paddingHorizontal: 12, height: 46 },
+  hamburgerText: { fontSize: 24, color: C.t2 },
+  headerTitle:   { fontSize: 17, fontWeight: '800', color: C.t1, letterSpacing: -0.3, flexShrink: 1 },
+  headerSub:     { fontSize: 10, color: C.t3, marginTop: 2, lineHeight: 15, flexShrink: 1 },
+  addBtn:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.blue, borderRadius: 50, paddingHorizontal: 18, paddingVertical: 10 },
+  addBtnText:    { color: '#fff', fontWeight: '800', fontSize: 13 },
+  controlBar:    { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12, gap: 10, backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: C.border },
+  searchWrap:    { flexDirection: 'row', alignItems: 'center', backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 12, height: 46 },
   searchIcon:    { marginRight: 8, fontSize: 15 },
-  searchInput:   { flex: 1, color: '#e2e8f0', fontSize: 14 },
+  searchInput:   { flex: 1, color: C.t1, fontSize: 14 },
   selects:       { flexDirection: 'row', gap: 10 },
   selectWrap:    { flex: 1 },
-  countRow:      { paddingHorizontal: 14, paddingBottom: 8 },
-  countText:     { fontSize: 11, color: '#4a5568' },
+  countRow:      { paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6 },
+  countText:     { fontSize: 11, color: C.t3 },
   cardList:      { paddingHorizontal: 14, gap: 10 },
-  card:          { backgroundColor: '#0d1424', borderRadius: 12, borderWidth: 1, borderColor: '#1e293b', padding: 14 },
+  card:          { backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 14 },
   cardTop:       { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10, gap: 10 },
-  cardName:      { fontSize: 15, fontWeight: '800', color: '#f1f5f9' },
-  cardZone:      { fontSize: 12, color: '#64748b', marginTop: 3 },
+  cardName:      { fontSize: 15, fontWeight: '800', color: C.t1 },
+  cardZone:      { fontSize: 12, color: C.t3, marginTop: 3 },
   cardMeta:      { flexDirection: 'row', gap: 16, marginBottom: 8 },
   metaItem:      { flexDirection: 'row', alignItems: 'center', gap: 5 },
   metaIcon:      { fontSize: 12 },
-  metaVal:       { fontSize: 12, color: '#94a3b8' },
+  metaVal:       { fontSize: 12, color: C.t2 },
   cardTags:      { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
-  cardActions:   { flexDirection: 'row', gap: 8, marginTop: 4, borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 10 },
-  actionBtn:       { flex: 1, flexDirection: 'row', borderWidth: 1, borderColor: '#1e293b', borderRadius: 7, paddingVertical: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111827' },
+  cardActions:   { flexDirection: 'row', gap: 8, marginTop: 4, borderTopWidth: 1, borderTopColor: C.border, paddingTop: 10 },
+  actionBtn:       { flex: 1, flexDirection: 'row', borderWidth: 1, borderColor: C.border, borderRadius: 7, paddingVertical: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: C.el },
   actionBtnDanger: { borderColor: '#ef444433' },
-  actionBtnText:   { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
+  actionBtnText:   { color: C.t2, fontSize: 12, fontWeight: '600' },
   statusBadge:   { borderRadius: 7, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 5, alignSelf: 'flex-start' },
   statusText:    { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
   vtag:          { backgroundColor: '#1e1035', borderRadius: 5, borderWidth: 1, borderColor: '#6d28d9', paddingHorizontal: 8, paddingVertical: 3 },
   vtagT:         { fontSize: 10, color: '#a855f7', fontWeight: '700' },
   emptyWrap:     { alignItems: 'center', paddingVertical: 60 },
   emptyIcon:     { fontSize: 44, marginBottom: 12, opacity: 0.3 },
-  emptyText:     { fontSize: 14, color: '#2d3748' },
-});
-
-const sb = StyleSheet.create({
-  wrap:  { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5 },
-  count: { fontSize: 13, fontWeight: '800' },
-  label: { fontSize: 9, fontWeight: '700', letterSpacing: 0.8 },
+  emptyText:     { fontSize: 14, color: C.t3 },
 });
 
 const dp = StyleSheet.create({
   wrap:             { position: 'relative', zIndex: 10 },
-  label:            { fontSize: 9, color: '#4a5568', fontWeight: '700', letterSpacing: 0.8, marginBottom: 5 },
-  trigger:          { backgroundColor: '#0d1424', borderWidth: 1, borderColor: '#1e293b', borderRadius: 7, paddingHorizontal: 10, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  val:              { color: '#e2e8f0', fontSize: 12 },
-  arrow:            { color: '#4a5568', fontSize: 10 },
-  dropdown:         { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#111827', borderWidth: 1, borderColor: '#1e293b', borderRadius: 7, zIndex: 999, elevation: 10, marginTop: 2, overflow: 'hidden' },
-  option:           { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
+  label:            { fontSize: 9, color: C.t3, fontWeight: '700', letterSpacing: 0.8, marginBottom: 5 },
+  trigger:          { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 7, paddingHorizontal: 10, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  val:              { color: C.t1, fontSize: 12 },
+  arrow:            { color: C.t3, fontSize: 10 },
+  dropdown:         { position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: C.el, borderWidth: 1, borderColor: C.border, borderRadius: 7, zIndex: 999, elevation: 10, marginTop: 2, overflow: 'hidden' },
+  option:           { paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border },
   optionActive:     { backgroundColor: '#1d4ed8' },
-  optionText:       { color: '#94a3b8', fontSize: 12 },
+  optionText:       { color: C.t2, fontSize: 12 },
   optionTextActive: { color: '#fff', fontWeight: '700' },
 });
 
 const tt = StyleSheet.create({
   wrap:         { marginBottom: 14 },
-  label:        { fontSize: 9, color: '#4a5568', fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
+  label:        { fontSize: 9, color: C.t3, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
   row:          { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tag:          { borderWidth: 1, borderColor: '#1e293b', borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: '#111827' },
-  tagActive:    { borderColor: '#38bdf8', backgroundColor: '#0e3a52' },
-  tagText:      { color: '#64748b', fontSize: 12 },
-  tagTextActive:{ color: '#38bdf8', fontWeight: '700' },
+  tag:          { borderWidth: 1, borderColor: C.border, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: C.el },
+  tagActive:    { borderColor: C.blue, backgroundColor: '#0e3a52' },
+  tagText:      { color: C.t3, fontSize: 12 },
+  tagTextActive:{ color: C.blue, fontWeight: '700' },
 });
 
 const ff = StyleSheet.create({
   wrap:  { marginBottom: 14 },
-  label: { fontSize: 9, color: '#4a5568', fontWeight: '700', letterSpacing: 0.8, marginBottom: 6 },
-  input: { backgroundColor: '#0d1424', borderWidth: 1, borderColor: '#1e293b', borderRadius: 7, paddingHorizontal: 12, paddingVertical: 10, color: '#e2e8f0', fontSize: 13, height: 42 },
+  label: { fontSize: 9, color: C.t3, fontWeight: '700', letterSpacing: 0.8, marginBottom: 6 },
+  input: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 7, paddingHorizontal: 12, paddingVertical: 10, color: C.t1, fontSize: 13, height: 42 },
 });
 
 const am = StyleSheet.create({
   overlay:    { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.7)' },
   kavWrap:    { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 },
-  sheet:      { backgroundColor: '#0d1424', borderRadius: 14, borderWidth: 1, borderColor: '#1e293b', width: '100%', maxHeight: '90%' },
-  header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#1e293b' },
+  sheet:      { backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, width: '100%', maxHeight: '90%' },
+  header:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: C.border },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerIcon: { fontSize: 16 },
-  headerTitle:{ fontSize: 16, fontWeight: '700', color: '#f1f5f9' },
+  headerTitle:{ fontSize: 16, fontWeight: '700', color: C.t1 },
   closeBtn:   { padding: 4 },
-  closeX:     { color: '#64748b', fontSize: 18, fontWeight: '300' },
+  closeX:     { color: C.t3, fontSize: 18, fontWeight: '300' },
   body:       { paddingHorizontal: 18, paddingTop: 16 },
   row2:       { flexDirection: 'row', marginBottom: 0 },
-  footer:     { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: '#1e293b' },
-  cancelBtn:  { flex: 1, borderWidth: 1, borderColor: '#1e293b', borderRadius: 8, paddingVertical: 12, alignItems: 'center', backgroundColor: '#111827' },
-  cancelText: { color: '#94a3b8', fontSize: 13, fontWeight: '600' },
-  saveBtn:    { flex: 2, backgroundColor: '#38bdf8', borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
-  saveText:   { color: '#0a0f1a', fontSize: 13, fontWeight: '800' },
+  footer:     { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: C.border },
+  cancelBtn:  { flex: 1, borderWidth: 1, borderColor: C.border, borderRadius: 8, paddingVertical: 12, alignItems: 'center', backgroundColor: C.el },
+  cancelText: { color: C.t2, fontSize: 13, fontWeight: '600' },
+  saveBtn:    { flex: 2, backgroundColor: C.blue, borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
+  saveText:   { color: '#fff', fontSize: 13, fontWeight: '800' },
 });
 
 const cm = StyleSheet.create({
   overlay:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
   centerer:  { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', padding: 32 },
-  box:       { backgroundColor: '#0d1424', borderRadius: 16, padding: 24, width: '100%', borderWidth: 1, borderColor: '#1e293b' },
-  title:     { fontSize: 18, fontWeight: '800', color: '#f1f5f9', marginBottom: 8 },
-  msg:       { fontSize: 14, color: '#94a3b8', lineHeight: 20, marginBottom: 24 },
-  name:      { color: '#f1f5f9', fontWeight: '700' },
+  box:       { backgroundColor: C.card, borderRadius: 16, padding: 24, width: '100%', borderWidth: 1, borderColor: C.border },
+  title:     { fontSize: 18, fontWeight: '800', color: C.t1, marginBottom: 8 },
+  msg:       { fontSize: 14, color: C.t2, lineHeight: 20, marginBottom: 24 },
+  name:      { color: C.t1, fontWeight: '700' },
   btns:      { flexDirection: 'row', gap: 12 },
-  cancelBtn: { flex: 1, backgroundColor: '#1e293b', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
-  cancelTxt: { color: '#94a3b8', fontSize: 14, fontWeight: '600' },
+  cancelBtn: { flex: 1, backgroundColor: C.el, borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
+  cancelTxt: { color: C.t2, fontSize: 14, fontWeight: '600' },
   okBtn:     { flex: 1, backgroundColor: '#ef4444', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
   okTxt:     { color: '#fff', fontSize: 14, fontWeight: '800' },
 });

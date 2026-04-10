@@ -26,7 +26,7 @@ const k = StyleSheet.create({
 
 const RISK_C = { High: C.red, Medium: C.orange, Low: C.green };
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation, onNavigate }) {
   const insets = useSafeAreaInsets();
   const { incidents, alerts, evacCenters, residents, activityLog, resources, reload } = useApp();
   const w = useWeather();
@@ -46,6 +46,10 @@ export default function DashboardScreen() {
   const depletedCount = (resources || []).filter(r => r.available === 0 || r.status === 'Depleted').length;
 
   async function onRefresh() { setBusy(true); await reload(); setBusy(false); }
+  const nav = (screen) => {
+    if (onNavigate) onNavigate(screen);
+    else navigation.navigate(screen);
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
@@ -103,7 +107,7 @@ export default function DashboardScreen() {
 
         {/* Resource Availability */}
         <View style={s.section}>
-          <SecHdr title="Resource Availability" right="View All" onRight={() => {}} />
+          <SecHdr title="Resource Availability" right="View All" onRight={() => nav('Resources')} />
           <View style={s.resGrid}>
 
             {/* Total Items */}
@@ -151,7 +155,7 @@ export default function DashboardScreen() {
 
         {/* Active Incidents table */}
         <View style={s.section}>
-          <SecHdr title="Active Incidents" count={activeInc.length} right="View All" onRight={() => {}} />
+          <SecHdr title="Active Incidents" count={activeInc.length} right="View All" onRight={() => nav('Incidents')} />
           {activeInc.length === 0
             ? <Text style={s.empty}>All clear — no active incidents</Text>
             : (
@@ -179,7 +183,7 @@ export default function DashboardScreen() {
 
         {/* Zone Risk table */}
         <View style={s.section}>
-          <SecHdr title="Zone Risk Levels" right="Details" onRight={() => {}} />
+          <SecHdr title="Zone Risk Levels" right="Details" onRight={() => nav('Risk')} />
           <View style={s.tableWrap}>
             <View style={s.thead}>
               <Text style={[s.th, { width: 54 }]}>ZONE</Text>
@@ -203,7 +207,7 @@ export default function DashboardScreen() {
 
         {/* Recent Activity */}
         <View style={s.section}>
-          <SecHdr title="Recent Activity" right="View All" onRight={() => {}} />
+          <SecHdr title="Recent Activity" right="View All" onRight={() => nav('ActivityLog')} />
           <View style={s.tableWrap}>
             <View style={s.thead}>
               <Text style={[s.th, { flex: 3 }]}>ACTION</Text>

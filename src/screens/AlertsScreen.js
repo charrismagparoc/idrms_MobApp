@@ -12,7 +12,7 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View, 
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Confirm, DeleteBtn, Empty } from '../components/Shared';
@@ -21,7 +21,7 @@ import { useAuth } from '../context/AuthContext';
 import { ALT_LEVELS, ZONES } from '../data/constants';
 import { C } from '../styles/colors';
 
-/* ─── constants ─────────────────────────────────────────────── */
+
 const LCOLOR = { Danger: C.red, Warning: C.orange, Advisory: C.blue, Resolved: C.green };
 const ALL_Z  = ['All Zones', ...ZONES];
 const EF     = { level: 'Advisory', zone: 'All Zones', message: '' };
@@ -33,7 +33,7 @@ const QUICK = [
   { label: 'All Clear',       level: 'Resolved', zone: 'All Zones', icon: 'shield-checkmark',msg: 'ALL CLEAR: Emergency resolved. Residents may return to normal activities.'     },
 ];
 
-/* ─── tiny level-picker ──────────────────────────────────────── */
+
 function LevelPicker({ value, onChange, open, onToggle }) {
   return (
     <View style={{ flex: 1, zIndex: open ? 20 : 1 }}>
@@ -54,7 +54,7 @@ function LevelPicker({ value, onChange, open, onToggle }) {
   );
 }
 
-/* ─── tiny zone-picker ───────────────────────────────────────── */
+
 function ZonePicker({ value, onChange, open, onToggle }) {
   return (
     <View style={{ flex: 1, zIndex: open ? 20 : 1 }}>
@@ -75,9 +75,7 @@ function ZonePicker({ value, onChange, open, onToggle }) {
   );
 }
 
-/* ─── Send Alert Modal ───────────────────────────────────────── */
-// `saving` is owned by the parent and passed as a prop.
-// `handleSave` is synchronous — async lives in the parent only.
+
 function SendAlertModal({ visible, onClose, onSave, saving, initialForm, residents = [] }) {
   const [form, setForm]         = useState({ ...EF });
   const [resQ, setResQ]         = useState('');
@@ -88,7 +86,7 @@ function SendAlertModal({ visible, onClose, onSave, saving, initialForm, residen
   const msgInputRef  = useRef(null);
   const resSearchRef = useRef(null);
 
-  // Reset form every time the modal becomes visible
+  
   function onShow() {
     setForm(initialForm ? { ...initialForm } : { ...EF });
     setSelected([]);
@@ -123,7 +121,7 @@ function SendAlertModal({ visible, onClose, onSave, saving, initialForm, residen
     setSelected(s => s.length === filteredRes.length ? [] : filteredRes.map(r => r.id));
   }
 
-  // Synchronous — just validates and delegates to parent
+  
   function handleSave() {
     if (!form.message.trim()) return;
     const selectedNames = residents
@@ -288,47 +286,124 @@ function SendAlertModal({ visible, onClose, onSave, saving, initialForm, residen
   );
 }
 
-/* ─── history item ───────────────────────────────────────────── */
-function HistoryItem({ a, onDelete }) {
+
+function HistoryItem({ a, onDelete, onPress }) {
   const color = LCOLOR[a.level] || C.blue;
-  const date  = a.created_at
-    ? new Date(a.created_at).toLocaleString()
-    : '';
-  const hasRecipients = a.recipients?.length > 0;
+  const date  = a.created_at ? new Date(a.created_at).toLocaleString() : '';
+  const levelIcon =
+    a.level === 'Danger'   ? 'warning' :
+    a.level === 'Warning'  ? 'alert-circle' :
+    a.level === 'Resolved' ? 'checkmark-circle' : 'information-circle';
   return (
-    <View style={[hi.row, { borderLeftColor: color }]}>
+    <TouchableOpacity
+      style={[hi.card, { borderLeftColor: color }]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
       <View style={hi.top}>
-        <View style={[hi.badge, { borderColor: color }]}>
+        <View style={[hi.badge, { borderColor: color, backgroundColor: color + '18' }]}>
+          <Ionicons name={levelIcon} size={10} color={color} />
           <Text style={[hi.badgeTxt, { color }]}>{a.level?.toUpperCase()}</Text>
         </View>
-        <Text style={hi.title} numberOfLines={1}>{a.title || (a.level + ' — ' + a.zone)}</Text>
-        <Text style={hi.zone}>{a.zone}</Text>
-        <DeleteBtn onPress={onDelete} />
+        <View style={hi.zonePill}>
+          <Ionicons name="location-outline" size={10} color={C.t3} />
+          <Text style={hi.zoneTxt}>{a.zone}</Text>
+        </View>
+        <View style={{ flex: 1 }} />
+        <DeleteBtn onPress={e => { e?.stopPropagation?.(); onDelete(); }} />
       </View>
+      <Text style={hi.title} numberOfLines={1}>{a.title || (a.level + ' — ' + a.zone)}</Text>
       <Text style={hi.msg} numberOfLines={2}>{a.message}</Text>
-      <View style={hi.meta}>
-        {a.sent_by && <><Ionicons name="person-outline" size={11} color={C.t3} /><Text style={hi.metaTxt}>{a.sent_by}</Text></>}
-        {(a.recipients_count > 0) && <><Ionicons name="people-outline" size={11} color={C.t3} /><Text style={hi.metaTxt}>{a.recipients_count} {a.recipients_count === 1 ? 'recipient' : 'recipients'}</Text></>}
-        {date && <><Ionicons name="time-outline" size={11} color={C.t3} /><Text style={hi.metaTxt}>{date}</Text></>}
+      <View style={hi.divider} />
+      <View style={hi.footer}>
+        <View style={hi.meta}>
+          {a.sent_by && (
+            <View style={hi.metaItem}>
+              <Ionicons name="person-outline" size={11} color={C.t3} />
+              <Text style={hi.metaTxt}>{a.sent_by}</Text>
+            </View>
+          )}
+          {(a.recipients_count > 0) && (
+            <View style={hi.metaItem}>
+              <Ionicons name="people-outline" size={11} color={C.t3} />
+              <Text style={hi.metaTxt}>{a.recipients_count} {a.recipients_count === 1 ? 'recipient' : 'recipients'}</Text>
+            </View>
+          )}
+          {date && (
+            <View style={hi.metaItem}>
+              <Ionicons name="time-outline" size={11} color={C.t3} />
+              <Text style={hi.metaTxt}>{date}</Text>
+            </View>
+          )}
+        </View>
+        <View style={hi.tapHint}>
+          <Ionicons name="eye-outline" size={10} color={color} />
+          <Text style={[hi.tapHintTxt, { color }]}>Preview</Text>
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
-/* ─── stat card ──────────────────────────────────────────────── */
-function StatCard({ value, label, color, icon }) {
+function AlertPreviewModal({ alert, onClose }) {
+  if (!alert) return null;
+  const color = LCOLOR[alert.level] || C.blue;
+  const date  = alert.created_at ? new Date(alert.created_at).toLocaleString() : '';
   return (
-    <View style={[sc.card, { borderColor: color + '33' }]}>
-      <View style={[sc.iconWrap, { backgroundColor: color + '22' }]}>
-        <Ionicons name={icon} size={18} color={color} />
+    <Modal visible={!!alert} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={pv.overlay} />
+      </TouchableWithoutFeedback>
+      <View style={pv.centerer} pointerEvents="box-none">
+        <View style={[pv.card, { borderTopColor: color, borderTopWidth: 3 }]}>
+          {/* header */}
+          <View style={pv.hdr}>
+            <View style={[pv.badge, { borderColor: color }]}>
+              <Text style={[pv.badgeTxt, { color }]}>{alert.level?.toUpperCase()}</Text>
+            </View>
+            <Text style={pv.zone}>{alert.zone}</Text>
+            <TouchableOpacity onPress={onClose} style={pv.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={20} color={C.t2} />
+            </TouchableOpacity>
+          </View>
+          {/* title */}
+          <Text style={pv.title}>{alert.title || (alert.level + ' — ' + alert.zone)}</Text>
+          {/* full message */}
+          <ScrollView style={pv.msgScroll} showsVerticalScrollIndicator={false}>
+            <Text style={pv.msg}>{alert.message}</Text>
+          </ScrollView>
+          {/* meta */}
+          <View style={pv.meta}>
+            {alert.sent_by && (
+              <View style={pv.metaRow}>
+                <Ionicons name="person-outline" size={12} color={C.t3} />
+                <Text style={pv.metaTxt}>{alert.sent_by}</Text>
+              </View>
+            )}
+            {(alert.recipients_count > 0) && (
+              <View style={pv.metaRow}>
+                <Ionicons name="people-outline" size={12} color={C.t3} />
+                <Text style={pv.metaTxt}>{alert.recipients_count} {alert.recipients_count === 1 ? 'recipient' : 'recipients'}</Text>
+              </View>
+            )}
+            {date && (
+              <View style={pv.metaRow}>
+                <Ionicons name="time-outline" size={12} color={C.t3} />
+                <Text style={pv.metaTxt}>{date}</Text>
+              </View>
+            )}
+          </View>
+          <TouchableOpacity style={[pv.closeFullBtn, { backgroundColor: color + '22', borderColor: color + '55' }]} onPress={onClose} activeOpacity={0.8}>
+            <Text style={[pv.closeBtnTxt, { color }]}>Close</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <Text style={[sc.val, { color }]}>{value}</Text>
-      <Text style={sc.lbl}>{label}</Text>
-    </View>
+    </Modal>
   );
 }
 
-/* ─── main screen ────────────────────────────────────────────── */
+
+
 export default function AlertsScreen() {
   const insets = useSafeAreaInsets();
   const { alerts, addAlert, deleteAlert, reload, residents } = useApp();
@@ -336,29 +411,21 @@ export default function AlertsScreen() {
   const [q, setQ]  = useState('');
   const [show, setShow]     = useState(false);
   const [initForm, setInit] = useState(null);
-  const [delId, setDelId]   = useState(null);
-  const [saving, setSaving] = useState(false); // owned here, passed as prop to modal
-  const [busy, setBusy]     = useState(false);
+  const [delId, setDelId]       = useState(null);
+  const [previewAlert, setPreviewAlert] = useState(null);
+  const [saving, setSaving]     = useState(false); 
+  const [busy, setBusy]         = useState(false);
 
   const list = alerts.filter(a =>
     !q || (a.message + a.zone + a.level).toLowerCase().includes(q.toLowerCase())
   );
-
-  const counts = {
-    total:    alerts.length,
-    danger:   alerts.filter(a => a.level === 'Danger').length,
-    warning:  alerts.filter(a => a.level === 'Warning').length,
-    advisory: alerts.filter(a => a.level === 'Advisory').length,
-    resolved: alerts.filter(a => a.level === 'Resolved').length,
-  };
 
   function openSend(preset) {
     setInit(preset || { ...EF });
     setShow(true);
   }
 
-  // Async owned here — passes exactly the fields addAlert in useDB expects:
-  // { level, zone, message } + userName string
+  
   async function handleSave(form, selectedResidents, selectedNames) {
     setSaving(true);
     try {
@@ -386,7 +453,7 @@ export default function AlertsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
 
-      {/* ── top bar ── */}
+      {/* top bar */}
       <View style={[s.topBar, { paddingTop: insets.top + 10 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flex: 1 }}>
           <Ionicons name="shield-checkmark" size={20} color={C.blue} />
@@ -402,16 +469,7 @@ export default function AlertsScreen() {
         contentContainerStyle={{ paddingBottom: 30 }}
         refreshControl={<RefreshControl refreshing={busy} onRefresh={onRefresh} tintColor={C.blue} />}
       >
-        {/* ── stats ── */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.statsRow}>
-          <StatCard value={counts.total}    label="TOTAL SENT" color={C.blue}   icon="megaphone"           />
-          <StatCard value={counts.danger}   label="DANGER"     color={C.red}    icon="warning"             />
-          <StatCard value={counts.warning}  label="WARNING"    color={C.orange} icon="alert-circle"        />
-          <StatCard value={counts.advisory} label="ADVISORY"   color={C.blue}   icon="information-circle"  />
-          <StatCard value={counts.resolved} label="RESOLVED"   color={C.green}  icon="checkmark-circle"    />
-        </ScrollView>
-
-        {/* ── quick broadcast ── */}
+        {/* quick broadcast */}
         <View style={s.section}>
           <View style={s.secHdr}>
             <Ionicons name="flash" size={15} color={C.orange} />
@@ -435,7 +493,7 @@ export default function AlertsScreen() {
           </View>
         </View>
 
-        {/* ── search ── */}
+        {/* search */}
         <View style={s.searchWrap}>
           <Ionicons name="search" size={16} color={C.t3} style={{ marginRight: 8 }} />
           <TextInput
@@ -447,21 +505,21 @@ export default function AlertsScreen() {
           />
         </View>
 
-        {/* ── alert history ── */}
-        <View style={s.section}>
-          <View style={s.secHdr}>
+        {/* alert history */}
+        <View style={s.historySection}>
+          <View style={[s.secHdr, { marginBottom: 12 }]}>
             <Ionicons name="notifications" size={15} color={C.blue} />
             <Text style={s.secTitle}>ALERT HISTORY</Text>
             <View style={s.countBadge}><Text style={s.countTxt}>{alerts.length}</Text></View>
           </View>
           {list.map(a => (
-            <HistoryItem key={String(a.id)} a={a} onDelete={() => setDelId(a.id)} />
+            <HistoryItem key={String(a.id)} a={a} onDelete={() => setDelId(a.id)} onPress={() => setPreviewAlert(a)} />
           ))}
           {list.length === 0 && <Empty iconName="megaphone-outline" title="No alerts yet" />}
         </View>
       </ScrollView>
 
-      {/* ── modal ── */}
+      {/* modal */}
       <SendAlertModal
         visible={show}
         onClose={() => setShow(false)}
@@ -470,6 +528,8 @@ export default function AlertsScreen() {
         initialForm={initForm}
         residents={residents || []}
       />
+
+      <AlertPreviewModal alert={previewAlert} onClose={() => setPreviewAlert(null)} />
 
       <Confirm
         visible={!!delId}
@@ -482,16 +542,15 @@ export default function AlertsScreen() {
   );
 }
 
-/* ─── styles ─────────────────────────────────────────────────── */
 const s = StyleSheet.create({
   topBar:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: C.border },
-  pageTitle:   { fontSize: 16, fontWeight: '800', color: C.t1 },
+  pageTitle:   { fontSize: 17, fontWeight: '800', color: C.t1 },
   pageSub:     { fontSize: 11, color: C.t3, marginTop: 3, lineHeight: 16 },
-  sendBtn:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.blue, borderRadius: 22, paddingHorizontal: 10, paddingVertical: 7 },
+  sendBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.blue, borderRadius: 50, paddingHorizontal: 18, paddingVertical: 10 },
 
-  sendBtnTxt:  { color: '#fff', fontWeight: '700', fontSize: 12 },
+  sendBtnTxt:  { color: '#fff', fontWeight: '800', fontSize: 13 },
   statsRow:    { flexDirection: 'row', gap: 10, paddingHorizontal: 12, paddingVertical: 14 },
-  section:     { marginHorizontal: 12, marginBottom: 12, backgroundColor: C.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.border },
+  section:     { marginHorizontal: 12, marginTop: 12, marginBottom: 12, backgroundColor: C.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.border },
   secHdr:      { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
 
   secTitle:    { fontSize: 11, fontWeight: '700', color: C.t3, letterSpacing: 0.5 },
@@ -503,25 +562,44 @@ const s = StyleSheet.create({
   quickLabel:  { fontSize: 13, fontWeight: '700', textAlign: 'center' },
   searchWrap:  { flexDirection: 'row', alignItems: 'center', marginHorizontal: 12, marginBottom: 12, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, height: 42 },
   searchInput: { flex: 1, color: C.t1, fontSize: 13 },
-});
-
-const sc = StyleSheet.create({
-  card:     { width: 80, backgroundColor: C.card, borderRadius: 12, borderWidth: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4 },
-  iconWrap: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  val:      { fontSize: 22, fontWeight: '900' },
-  lbl:      { fontSize: 7, fontWeight: '700', color: C.t3, letterSpacing: 0.6, marginTop: 4, textAlign: 'center' },
+  historySection: { paddingHorizontal: 12, marginBottom: 12 },
 });
 
 const hi = StyleSheet.create({
-  row:      { borderLeftWidth: 3, paddingLeft: 10, paddingVertical: 10, paddingRight: 6, borderBottomWidth: 1, borderBottomColor: C.border, marginBottom: 2 },
-  top:      { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  badge:    { borderWidth: 1, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeTxt: { fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
-  title:    { flex: 1, fontSize: 12, fontWeight: '700', color: C.t1 },
-  zone:     { fontSize: 11, color: C.t3 },
-  msg:      { fontSize: 12, color: C.t2, lineHeight: 17, marginBottom: 6 },
-  meta:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
-  metaTxt:  { fontSize: 10, color: C.t3, marginLeft: 3 },
+  card:       { backgroundColor: C.card, borderRadius: 12, borderWidth: 1, borderColor: C.border, borderLeftWidth: 4, padding: 14, marginBottom: 10 },
+  top:        { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  badge:      { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 },
+  badgeTxt:   { fontSize: 9, fontWeight: '800', letterSpacing: 0.4 },
+  zonePill:   { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: C.el, borderRadius: 5, paddingHorizontal: 7, paddingVertical: 3 },
+  zoneTxt:    { fontSize: 10, color: C.t3, fontWeight: '600' },
+  title:      { fontSize: 13, fontWeight: '800', color: C.t1, marginBottom: 6 },
+  msg:        { fontSize: 12, color: C.t2, lineHeight: 18, marginBottom: 10 },
+  divider:    { height: 1, backgroundColor: C.border, marginBottom: 10 },
+  footer:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  meta:       { flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'center', flex: 1 },
+  metaItem:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaTxt:    { fontSize: 10, color: C.t3 },
+  tapHint:    { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  tapHintTxt: { fontSize: 10, fontWeight: '700' },
+});
+
+const pv = StyleSheet.create({
+  overlay:      { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.65)' },
+  centerer:     { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  card:         { backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, width: '100%', maxHeight: '80%', overflow: 'hidden' },
+  hdr:          { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10 },
+  badge:        { borderWidth: 1, borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeTxt:     { fontSize: 10, fontWeight: '800', letterSpacing: 0.4 },
+  zone:         { flex: 1, fontSize: 12, color: C.t3, fontWeight: '600' },
+  closeBtn:     { padding: 2 },
+  title:        { fontSize: 15, fontWeight: '800', color: C.t1, paddingHorizontal: 16, marginBottom: 10 },
+  msgScroll:    { maxHeight: 200, paddingHorizontal: 16 },
+  msg:          { fontSize: 13, color: C.t2, lineHeight: 20 },
+  meta:         { flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  metaRow:      { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaTxt:      { fontSize: 11, color: C.t3 },
+  closeFullBtn: { margin: 16, borderRadius: 10, borderWidth: 1, paddingVertical: 12, alignItems: 'center' },
+  closeBtnTxt:  { fontSize: 14, fontWeight: '700' },
 });
 
 const pk = StyleSheet.create({
