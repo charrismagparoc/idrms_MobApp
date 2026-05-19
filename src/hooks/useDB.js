@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ZONE_COORDS } from '../data/constants';
+import { ZONE_COORDS, API_BASE_URL } from '../data/constants';
 
-const API_URL = 'https://julianna-unblossomed-zahra.ngrok-free.dev/api'; 
+const API_URL = `${API_BASE_URL}/api`;
 
 const now = () => new Date().toISOString();
 let _id = 9000;
 const lid = () => String(++_id);
 
-const ni = r => ({ ...r, dateReported: r.date_reported, createdAt: r.created_at });
-const ne = r => ({ ...r, facilitiesAvailable: r.facilities_available || [], contactPerson: r.contact_person });
-const nr = r => ({ ...r, householdMembers: r.household_members, evacuationStatus: r.evacuation_status, vulnerabilityTags: r.vulnerability_tags || [] });
+const ni = r => ({ ...r, id: String(r.id), dateReported: r.date_reported, createdAt: r.created_at });
+const ne = r => ({ ...r, id: String(r.id), facilitiesAvailable: r.facilities_available || [], contactPerson: r.contact_person });
+const nr = r => ({ ...r, id: String(r.id), householdMembers: r.household_members, evacuationStatus: r.evacuation_status, vulnerabilityTags: r.vulnerability_tags || [] });
 const na = r => ({ ...r, id: String(r.id), userName: r.user_name || 'System', createdAt: r.created_at || now(), urgent: !!r.urgent });
 
 function gps(zone) {
@@ -17,7 +17,7 @@ function gps(zone) {
   return { lat: b.lat + (Math.random() - 0.5) * 0.004, lng: b.lng + (Math.random() - 0.5) * 0.004 };
 }
 
-// API helper
+
 async function api(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
@@ -96,14 +96,14 @@ export function useDB() {
       });
       if (!data || !data.user) return { ok: false, msg: 'Wrong email or password.' };
       log('Signed in: ' + data.user.name, 'Auth', data.user.name);
-      return { ok: true, user: data.user };
+      return { ok: true, user: { ...data.user, id: String(data.user.id) } };
     } catch (_) {
       const local = users.find(u => u.email?.toLowerCase() === email.trim().toLowerCase() && u.password === password && u.status === 'Active');
       if (local) {
         log('Signed in: ' + local.name, 'Auth', local.name);
-        return { ok: true, user: { id: local.id, name: local.name, email: local.email, role: local.role } };
+        return { ok: true, user: { id: String(local.id), name: local.name, email: local.email, role: local.role } };
       }
-      return { ok: false, msg: 'Cannot connect. Make sure Django server is running.' };
+      return { ok: false, msg: 'Cannot connect. Make sure FastAPI is running on port 8080.' };
     }
   }, [users, log]);
 
@@ -120,13 +120,13 @@ export function useDB() {
   const updateIncident = useCallback(async (id, d, user) => {
     const { id: _, created_at, date_reported, dateReported, createdAt, ...safe } = d;
     const rec = await api(`/incidents/${id}/`, { method: 'PATCH', body: safe });
-    setI(prev => prev.map(r => r.id === id ? ni(rec) : r));
+    setI(prev => prev.map(r => r.id === String(id) ? ni(rec) : r));
     log('Incident updated', 'Incident', user);
   }, [log]);
 
   const deleteIncident = useCallback(async (id, label, user) => {
     await api(`/incidents/${id}/`, { method: 'DELETE' });
-    setI(prev => prev.filter(r => r.id !== id));
+    setI(prev => prev.filter(r => r.id !== String(id)));
     log('Incident deleted: ' + (label || ''), 'Incident', user, true);
   }, [log]);
 
@@ -136,13 +136,13 @@ export function useDB() {
       method: 'POST',
       body: { title: d.level + ' — ' + d.zone, message: d.message, level: d.level, zone: d.zone, recipients_count: count, sent_by: user || 'System' },
     });
-    setA(prev => [{ ...rec, recipients_count: count }, ...prev]);
+    setA(prev => [{ ...rec, id: String(rec.id), recipients_count: count }, ...prev]);
     log(d.level + ' alert to ' + d.zone, 'Alert', user, d.level === 'Danger');
   }, [log]);
 
   const deleteAlert = useCallback(async (id, user) => {
     await api(`/alerts/${id}/`, { method: 'DELETE' });
-    setA(prev => prev.filter(r => r.id !== id));
+    setA(prev => prev.filter(r => r.id !== String(id)));
     log('Alert deleted', 'Alert', user);
   }, [log]);
 
@@ -150,7 +150,7 @@ export function useDB() {
     const p = gps(d.zone);
     const rec = await api('/evacuation-centers/', {
       method: 'POST',
-      body: { name: d.name, zone: d.zone, address: d.address || '', capacity: parseInt(d.capacity) || 100, occupancy: parseInt(d.occupancy) || 0, status: d.status || 'Open', facilities_available: d.facilitiesAvailable || [], contact_person: d.contactPerson || '', contact: d.contact || '', lat: p.lat, lng: p.lng },
+      body: { name: d.name, zone: d.zone, address: d.address || '', capacity: parseInt(d.capacity) || 100, current_occupancy: parseInt(d.occupancy) || 0, status: d.status || 'Open', facilities_available: d.facilitiesAvailable || [], contact_person: d.contactPerson || '', contact_number: d.contact || '', lat: p.lat, lng: p.lng },
     });
     setE(prev => [...prev, ne(rec)]);
     log('Evac center added: ' + d.name, 'Evacuation', user);
@@ -159,15 +159,15 @@ export function useDB() {
   const updateEvac = useCallback(async (id, d, user) => {
     const rec = await api(`/evacuation-centers/${id}/`, {
       method: 'PATCH',
-      body: { name: d.name, zone: d.zone, address: d.address || '', capacity: parseInt(d.capacity) || 100, occupancy: parseInt(d.occupancy) || 0, status: d.status, facilities_available: d.facilitiesAvailable || [], contact_person: d.contactPerson || '', contact: d.contact || '' },
+      body: { name: d.name, zone: d.zone, address: d.address || '', capacity: parseInt(d.capacity) || 100, current_occupancy: parseInt(d.occupancy) || 0, status: d.status, facilities_available: d.facilitiesAvailable || [], contact_person: d.contactPerson || '', contact_number: d.contact || '' },
     });
-    setE(prev => prev.map(r => r.id === id ? ne(rec) : r));
+    setE(prev => prev.map(r => r.id === String(id) ? ne(rec) : r));
     log('Evac updated: ' + d.name, 'Evacuation', user);
   }, [log]);
 
   const deleteEvac = useCallback(async (id, name, user) => {
     await api(`/evacuation-centers/${id}/`, { method: 'DELETE' });
-    setE(prev => prev.filter(r => r.id !== id));
+    setE(prev => prev.filter(r => r.id !== String(id)));
     log('Evac deleted: ' + (name || ''), 'Evacuation', user, true);
   }, [log]);
 
@@ -186,13 +186,13 @@ export function useDB() {
       method: 'PATCH',
       body: { name: d.name, zone: d.zone, address: d.address || '', household_members: parseInt(d.householdMembers) || 1, contact: d.contact || '', evacuation_status: d.evacuationStatus || 'Safe', vulnerability_tags: d.vulnerabilityTags || [], notes: d.notes || '' },
     });
-    setR(prev => prev.map(r => r.id === id ? nr(rec) : r));
+    setR(prev => prev.map(r => r.id === String(id) ? nr(rec) : r));
     log('Resident updated: ' + d.name, 'Resident', user);
   }, [log]);
 
   const deleteResident = useCallback(async (id, name, user) => {
     await api(`/residents/${id}/`, { method: 'DELETE' });
-    setR(prev => prev.filter(r => r.id !== id));
+    setR(prev => prev.filter(r => r.id !== String(id)));
     log('Resident deleted: ' + (name || ''), 'Resident', user, true);
   }, [log]);
 
@@ -201,7 +201,7 @@ export function useDB() {
       method: 'POST',
       body: { name: d.name, category: d.category, quantity: parseInt(d.quantity) || 1, available: parseInt(d.available) || 1, unit: d.unit || 'pcs', location: d.location || '', status: d.status || 'Available', notes: d.notes || '' },
     });
-    setS(prev => [...prev, rec]);
+    setS(prev => [...prev, { ...rec, id: String(rec.id) }]);
     log('Resource added: ' + d.name, 'Resource', user);
   }, [log]);
 
@@ -210,13 +210,13 @@ export function useDB() {
       method: 'PATCH',
       body: { name: d.name, category: d.category, quantity: parseInt(d.quantity) || 0, available: parseInt(d.available) || 0, unit: d.unit || 'pcs', location: d.location || '', status: d.status || 'Available', notes: d.notes || '' },
     });
-    setS(prev => prev.map(r => r.id === id ? rec : r));
+    setS(prev => prev.map(r => r.id === String(id) ? { ...rec, id: String(rec.id) } : r));
     log('Resource updated: ' + (d.name || ''), 'Resource', user);
   }, [log]);
 
   const deleteResource = useCallback(async (id, name, user) => {
     await api(`/resources/${id}/`, { method: 'DELETE' });
-    setS(prev => prev.filter(r => r.id !== id));
+    setS(prev => prev.filter(r => r.id !== String(id)));
     log('Resource deleted: ' + (name || ''), 'Resource', user, true);
   }, [log]);
 
@@ -225,19 +225,19 @@ export function useDB() {
       method: 'POST',
       body: { name: d.name, email: d.email, password: d.password, role: d.role || 'Staff', status: d.status || 'Active' },
     });
-    setU(prev => [...prev, rec]);
+    setU(prev => [...prev, { ...rec, id: String(rec.id) }]);
   }, []);
 
   const updateUser = useCallback(async (id, d) => {
     const update = { name: d.name, email: d.email, role: d.role, status: d.status };
     if (d.password && d.password.trim()) update.password = d.password;
     const rec = await api(`/users/${id}/`, { method: 'PATCH', body: update });
-    setU(prev => prev.map(r => r.id === id ? rec : r));
+    setU(prev => prev.map(r => r.id === String(id) ? { ...rec, id: String(rec.id) } : r));
   }, []);
 
   const deleteUser = useCallback(async (id) => {
     await api(`/users/${id}/`, { method: 'DELETE' });
-    setU(prev => prev.filter(r => r.id !== id));
+    setU(prev => prev.filter(r => r.id !== String(id)));
   }, []);
 
   return {

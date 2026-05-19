@@ -1,5 +1,5 @@
-export const SB_URL = 'https://qfclthshdqngpjixzjlz.supabase.co';
-export const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmY2x0aHNoZHFuZ3BqaXh6amx6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIwMDkyNzIsImV4cCI6MjA4NzU4NTI3Mn0.eauPhAsfm3sbnW6uj_opQPxBy6fN4szJIXpJV-tRq4g';
+export const API_BASE_URL = 'http://192.168.1.21:8080';  
+export const ML_API_URL  = 'http://192.168.1.21:8080';  
 
 export const ZONES      = ['Zone 1','Zone 2','Zone 3','Zone 4','Zone 5','Zone 6'];
 export const TYPES      = ['Flood','Fire','Earthquake','Landslide','Storm'];
