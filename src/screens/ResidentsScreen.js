@@ -20,7 +20,7 @@ import { C } from '../styles/colors';
 
 const EF = {
   name: '', zone: 'Zone 1', address: '', householdMembers: '1',
-  contact: '', evacuationStatus: 'Safe', vulnerabilityTags: [], notes: ''
+  contact: '', email: '', evacuationStatus: 'Safe', vulnerabilityTags: [], notes: ''
 };
 
 const STATUS_COLORS = {
@@ -77,7 +77,7 @@ function TagToggle({ label, values, opts, onChange }) {
   );
 }
 
-function FormField({ label, value, onChange, placeholder, keyboardType, multiline }) {
+function FormField({ label, value, onChange, placeholder, keyboardType, multiline, autoCapitalize, autoCorrect }) {
   return (
     <View style={ff.wrap}>
       <Text style={ff.label}>{label}</Text>
@@ -88,6 +88,9 @@ function FormField({ label, value, onChange, placeholder, keyboardType, multilin
         placeholder={placeholder}
         placeholderTextColor={C.t3}
         multiline={multiline}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
       />
     </View>
   );
@@ -105,6 +108,7 @@ function ResidentModal({ visible, onClose, onSave, saving, editData }) {
         ...editData,
         householdMembers: String(editData.householdMembers || 1),
         vulnerabilityTags: editData.vulnerabilityTags || [],
+        email: editData.email || '',
       });
     } else {
       setForm({ ...EF });
@@ -170,6 +174,16 @@ function ResidentModal({ visible, onClose, onSave, saving, editData }) {
               </View>
             </View>
 
+            <FormField
+              label="EMAIL ADDRESS"
+              value={form.email || ''}
+              onChange={v => set('email', v)}
+              placeholder="example@email.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
             <TagToggle label="VULNERABILITY TAGS" values={form.vulnerabilityTags} opts={VULN_TAGS} onChange={v => set('vulnerabilityTags', v)} />
             <FormField label="NOTES" value={form.notes || ''} onChange={v => set('notes', v)} placeholder="Additional notes..." multiline />
             <View style={{ height: 16 }} />
@@ -213,7 +227,6 @@ export default function ResidentsScreen({ navigation }) {
     const me = fe === 'All' || r.evacuationStatus === fe;
     return mq && mz && me;
   });
-
 
   async function handleSave(form) {
     setSaving(true);
@@ -278,7 +291,7 @@ export default function ResidentsScreen({ navigation }) {
             <View style={[s.selectWrap, { zIndex: openDD === 'status' ? 20 : 10 }]}>
               <DropdownPicker
                 label="" value={fe} opts={['All', ...RES_STAT]}
-                onChange={v => { setFe(v); setFvuln(false); }}
+                onChange={v => { setFe(v); }}
                 isOpen={openDD === 'status'}
                 onToggle={() => setOpenDD(openDD === 'status' ? null : 'status')}
               />
@@ -321,6 +334,12 @@ export default function ResidentsScreen({ navigation }) {
                     <View style={s.metaItem}>
                       <Ionicons name="call" size={13} color="#38bdf8" />
                       <Text style={s.metaVal}>{r.contact}</Text>
+                    </View>
+                  ) : null}
+                  {r.email ? (
+                    <View style={s.metaItem}>
+                      <Ionicons name="mail" size={13} color="#38bdf8" />
+                      <Text style={s.metaVal}>{r.email}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -397,7 +416,7 @@ const s = StyleSheet.create({
   cardTop:       { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10, gap: 10 },
   cardName:      { fontSize: 15, fontWeight: '800', color: C.t1 },
   cardZone:      { fontSize: 12, color: C.t3, marginTop: 3 },
-  cardMeta:      { flexDirection: 'row', gap: 16, marginBottom: 8 },
+  cardMeta:      { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 8 },
   metaItem:      { flexDirection: 'row', alignItems: 'center', gap: 5 },
   metaIcon:      { fontSize: 12 },
   metaVal:       { fontSize: 12, color: C.t2 },

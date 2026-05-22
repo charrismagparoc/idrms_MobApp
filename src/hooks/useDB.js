@@ -9,7 +9,7 @@ const lid = () => String(++_id);
 
 const ni = r => ({ ...r, id: String(r.id), dateReported: r.date_reported, createdAt: r.created_at });
 const ne = r => ({ ...r, id: String(r.id), facilitiesAvailable: r.facilities_available || [], contactPerson: r.contact_person });
-const nr = r => ({ ...r, id: String(r.id), householdMembers: r.household_members, evacuationStatus: r.evacuation_status, vulnerabilityTags: r.vulnerability_tags || [] });
+const nr = r => ({ ...r, id: String(r.id), householdMembers: r.household_members, evacuationStatus: r.evacuation_status, vulnerabilityTags: r.vulnerability_tags || [], email: r.email || '' });
 const na = r => ({ ...r, id: String(r.id), userName: r.user_name || 'System', createdAt: r.created_at || now(), urgent: !!r.urgent });
 
 function gps(zone) {
@@ -130,11 +130,20 @@ export function useDB() {
     log('Incident deleted: ' + (label || ''), 'Incident', user, true);
   }, [log]);
 
+  // ← UPDATED: now sends recipients list to backend for email
   const addAlert = useCallback(async (d, user) => {
     const count = d.recipients_count ?? d.smsCount ?? 0;
     const rec = await api('/alerts/', {
       method: 'POST',
-      body: { title: d.level + ' — ' + d.zone, message: d.message, level: d.level, zone: d.zone, recipients_count: count, sent_by: user || 'System' },
+      body: {
+        title: d.level + ' — ' + d.zone,
+        message: d.message,
+        level: d.level,
+        zone: d.zone,
+        recipients_count: count,
+        sent_by: user || 'System',
+        recipients: d.recipients || [],   // ← sends email list to backend
+      },
     });
     setA(prev => [{ ...rec, id: String(rec.id), recipients_count: count }, ...prev]);
     log(d.level + ' alert to ' + d.zone, 'Alert', user, d.level === 'Danger');
@@ -175,7 +184,7 @@ export function useDB() {
     const p = gps(d.zone);
     const rec = await api('/residents/', {
       method: 'POST',
-      body: { name: d.name, zone: d.zone, address: d.address || '', household_members: parseInt(d.householdMembers) || 1, contact: d.contact || '', evacuation_status: d.evacuationStatus || 'Safe', vulnerability_tags: d.vulnerabilityTags || [], notes: d.notes || '', added_by: user || 'Mobile', lat: p.lat, lng: p.lng, source: 'mobile' },
+      body: { name: d.name, zone: d.zone, address: d.address || '', household_members: parseInt(d.householdMembers) || 1, contact: d.contact || '', email: d.email || '', evacuation_status: d.evacuationStatus || 'Safe', vulnerability_tags: d.vulnerabilityTags || [], notes: d.notes || '', added_by: user || 'Mobile', lat: p.lat, lng: p.lng, source: 'mobile' },
     });
     setR(prev => [nr(rec), ...prev]);
     log('Resident added: ' + d.name, 'Resident', user);
@@ -184,7 +193,7 @@ export function useDB() {
   const updateResident = useCallback(async (id, d, user) => {
     const rec = await api(`/residents/${id}/`, {
       method: 'PATCH',
-      body: { name: d.name, zone: d.zone, address: d.address || '', household_members: parseInt(d.householdMembers) || 1, contact: d.contact || '', evacuation_status: d.evacuationStatus || 'Safe', vulnerability_tags: d.vulnerabilityTags || [], notes: d.notes || '' },
+      body: { name: d.name, zone: d.zone, address: d.address || '', household_members: parseInt(d.householdMembers) || 1, contact: d.contact || '', email: d.email || '', evacuation_status: d.evacuationStatus || 'Safe', vulnerability_tags: d.vulnerabilityTags || [], notes: d.notes || '' },
     });
     setR(prev => prev.map(r => r.id === String(id) ? nr(rec) : r));
     log('Resident updated: ' + d.name, 'Resident', user);
