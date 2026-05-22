@@ -43,11 +43,6 @@ export default function UsersScreen() {
   const [saveErr, setSaveErr] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const totalUsers    = users.length;
-  const adminCount    = users.filter(u => u.role === 'Admin').length;
-  const staffCount    = users.filter(u => u.role === 'Staff').length;
-  const activeCount   = users.filter(u => u.status === 'Active').length;
-
   const filtered = users
     .filter(u =>
       !q ||
@@ -136,29 +131,6 @@ export default function UsersScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* SUMMARY */}
-      <View style={s.summary}>
-        <View style={s.sumBox}>
-          <Text style={s.sumVal}>{totalUsers}</Text>
-          <Text style={s.sumLbl}>Total</Text>
-        </View>
-        <View style={s.sumDivider} />
-        <View style={s.sumBox}>
-          <Text style={[s.sumVal, { color: C.red }]}>{adminCount}</Text>
-          <Text style={s.sumLbl}>Admin</Text>
-        </View>
-        <View style={s.sumDivider} />
-        <View style={s.sumBox}>
-          <Text style={[s.sumVal, { color: C.blue }]}>{staffCount}</Text>
-          <Text style={s.sumLbl}>Staff</Text>
-        </View>
-        <View style={s.sumDivider} />
-        <View style={s.sumBox}>
-          <Text style={[s.sumVal, { color: '#4caf50' }]}>{activeCount}</Text>
-          <Text style={s.sumLbl}>Active</Text>
-        </View>
-      </View>
-
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}
         refreshControl={<RefreshControl refreshing={busy} onRefresh={onRefresh} tintColor={C.blue} />}>
 
@@ -212,11 +184,6 @@ const s = StyleSheet.create({
   bar:          { flexDirection: 'row', gap: 10, padding: 12, backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: C.border },
   addBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 8, paddingHorizontal: 14, height: 42 },
   addTxt:       { color: '#fff', fontWeight: '700', fontSize: 13 },
-  summary:      { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderBottomWidth: 1, borderBottomColor: C.border, paddingHorizontal: 16, paddingVertical: 10 },
-  sumBox:       { alignItems: 'center', flex: 1 },
-  sumVal:       { fontSize: 18, fontWeight: '800', color: C.t1 },
-  sumLbl:       { fontSize: 9, color: C.t3, marginTop: 2, fontWeight: '600', textTransform: 'uppercase' },
-  sumDivider:   { width: 1, height: 30, backgroundColor: C.border },
   count:        { fontSize: 11, color: C.t3, paddingHorizontal: 14, paddingVertical: 8 },
   sectionHeader:{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 6, gap: 8 },
   sectionLetter:{ fontSize: 13, fontWeight: '800', color: C.blue, width: 18 },

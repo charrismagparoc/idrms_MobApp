@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -27,10 +28,10 @@ const ALL_Z  = ['All Zones', ...ZONES];
 const EF     = { level: 'Advisory', zone: 'All Zones', message: '' };
 
 const QUICK = [
-  { label: 'Flood Warning',   level: 'Danger',   zone: 'Zone 3',    icon: 'water',  color: '#06b6d4', msg: 'FLOOD WARNING: Water level critically high. Immediate evacuation required.'   },
-  { label: 'Evacuation Order',level: 'Danger',   zone: 'All Zones', icon: 'exit',            msg: 'MANDATORY EVACUATION ORDER: All residents in high-risk zones must evacuate.'  },
-  { label: 'Storm Advisory',  level: 'Advisory', zone: 'All Zones', icon: 'partly-sunny',    msg: 'STORM ADVISORY: Strong winds and heavy rain expected. Prepare emergency kits.' },
-  { label: 'All Clear',       level: 'Resolved', zone: 'All Zones', icon: 'shield-checkmark',msg: 'ALL CLEAR: Emergency resolved. Residents may return to normal activities.'     },
+  { label: 'Flood Warning',   level: 'Danger',   zone: 'Zone 3',    icon: 'water',           color: '#06b6d4', msg: 'FLOOD WARNING: Water level critically high. Immediate evacuation required.'   },
+  { label: 'Evacuation Order',level: 'Danger',   zone: 'All Zones', icon: 'exit',                              msg: 'MANDATORY EVACUATION ORDER: All residents in high-risk zones must evacuate.'  },
+  { label: 'Storm Advisory',  level: 'Advisory', zone: 'All Zones', icon: 'partly-sunny',                      msg: 'STORM ADVISORY: Strong winds and heavy rain expected. Prepare emergency kits.' },
+  { label: 'All Clear',       level: 'Resolved', zone: 'All Zones', icon: 'shield-checkmark',                  msg: 'ALL CLEAR: Emergency resolved. Residents may return to normal activities.'     },
 ];
 
 
@@ -76,213 +77,291 @@ function ZonePicker({ value, onChange, open, onToggle }) {
 }
 
 
-function SendAlertModal({ visible, onClose, onSave, saving, initialForm, residents = [] }) {
-  const [form, setForm]         = useState({ ...EF });
-  const [resQ, setResQ]         = useState('');
-  const [selected, setSelected] = useState([]);
+// ── Resident Picker Modal ──────────────────────────────────────
+function ResidentPickerModal({ visible, onClose, residents, selected, onToggle }) {
+  const [search, setSearch] = useState('');
+
+  const eligible = (residents || []).filter(r => r.email?.trim());
+  const filtered = eligible.filter(r =>
+    !search ||
+    (r.name + r.email).toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={rp.overlay} />
+      </TouchableWithoutFeedback>
+
+      <View style={rp.centerer} pointerEvents="box-none">
+        <View style={rp.sheet}>
+          {/* header */}
+          <View style={rp.hdr}>
+            <Ionicons name="people" size={18} color={C.blue} />
+            <Text style={rp.hdrTxt}>Select Recipients</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={20} color={C.t2} />
+            </TouchableOpacity>
+          </View>
+
+          {/* search */}
+          <View style={rp.searchRow}>
+            <Ionicons name="search" size={14} color={C.t3} />
+            <TextInput
+              style={rp.searchInput}
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search residents..."
+              placeholderTextColor={C.t3}
+              autoCorrect={false}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Ionicons name="close-circle" size={14} color={C.t3} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {eligible.length === 0 ? (
+            <View style={rp.emptyWrap}>
+              <Ionicons name="mail-unread-outline" size={32} color={C.t3} />
+              <Text style={rp.emptyTxt}>No residents with email found</Text>
+            </View>
+          ) : (
+            <ScrollView style={rp.list} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {filtered.map(r => {
+                const isSelected = selected.some(s => s.id === r.id);
+                return (
+                  <TouchableOpacity
+                    key={String(r.id)}
+                    style={[rp.row, isSelected && rp.rowSelected]}
+                    onPress={() => onToggle(r)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[rp.avatar, isSelected && { backgroundColor: C.blue + '33', borderColor: C.blue }]}>
+                      <Text style={[rp.avatarTxt, isSelected && { color: C.blue }]}>
+                        {(r.name || '?')[0].toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[rp.name, isSelected && { color: C.blue }]} numberOfLines={1}>{r.name}</Text>
+                      <Text style={rp.email} numberOfLines={1}>{r.email}</Text>
+                    </View>
+                    <View style={[rp.check, isSelected && rp.checkSelected]}>
+                      {isSelected && <Ionicons name="checkmark" size={12} color="#fff" />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+              {filtered.length === 0 && (
+                <View style={rp.emptyWrap}>
+                  <Text style={rp.emptyTxt}>No matches found</Text>
+                </View>
+              )}
+              <View style={{ height: 12 }} />
+            </ScrollView>
+          )}
+
+          {/* done */}
+          <View style={rp.footer}>
+            <Text style={rp.selCount}>
+              {selected.length > 0 ? `${selected.length} selected` : 'None selected'}
+            </Text>
+            <TouchableOpacity style={rp.doneBtn} onPress={onClose} activeOpacity={0.85}>
+              <Text style={rp.doneTxt}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+
+// ── Send Alert Modal ───────────────────────────────────────────
+function SendAlertModal({ visible, onClose, onSave, saving, initialForm, residents }) {
+  const [form, setForm]             = useState({ ...EF });
   const [openPicker, setOpenPicker] = useState(null);
-  const [showResidents, setShowResidents] = useState(false);
+  const [selectedResidents, setSelectedResidents] = useState([]);
+  const [showResPicker, setShowResPicker]         = useState(false);
 
-  const msgInputRef  = useRef(null);
-  const resSearchRef = useRef(null);
+  const msgInputRef = useRef(null);
 
-  
   function onShow() {
     setForm(initialForm ? { ...initialForm } : { ...EF });
-    setSelected([]);
-    setResQ('');
+    setSelectedResidents([]);
     setOpenPicker(null);
-    setShowResidents(false);
-  }
-
-  function blurAllInputs() {
-    msgInputRef.current?.blur();
-    resSearchRef.current?.blur();
-    Keyboard.dismiss();
   }
 
   function togglePicker(name) {
     Keyboard.dismiss();
     msgInputRef.current?.blur();
-    resSearchRef.current?.blur();
     setOpenPicker(prev => (prev === name ? null : name));
   }
 
   function set(k, v) { setForm(p => ({ ...p, [k]: v })); }
 
-  const filteredRes = residents.filter(r =>
-    !resQ || r.name?.toLowerCase().includes(resQ.toLowerCase())
-  );
-
-  function toggleRes(id) {
-    setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
-  }
-  function toggleAll() {
-    setSelected(s => s.length === filteredRes.length ? [] : filteredRes.map(r => r.id));
+  function toggleResident(r) {
+    setSelectedResidents(prev =>
+      prev.some(s => s.id === r.id)
+        ? prev.filter(s => s.id !== r.id)
+        : [...prev, r]
+    );
   }
 
-  
+  function removeResident(r) {
+    setSelectedResidents(prev => prev.filter(s => s.id !== r.id));
+  }
+
   function handleSave() {
     if (!form.message.trim()) return;
-    const selectedNames = residents
-      .filter(r => selected.includes(r.id))
-      .map(r => r.name);
-    onSave(form, selected, selectedNames);
+    const emailList  = selectedResidents.map(r => r.email).filter(Boolean);
+    const emailNames = selectedResidents.map(r => r.name).filter(Boolean);
+    onSave(form, emailList, emailNames);
   }
 
-  const STATUS_COLOR = { Safe: C.green, Evacuated: C.orange, Unaccounted: C.red };
+  const eligibleCount = (residents || []).filter(r => r.email?.trim()).length;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-      onShow={onShow}
-    >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={m.overlay} />
-      </TouchableWithoutFeedback>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={m.kavWrap}
-        pointerEvents="box-none"
+    <>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        onRequestClose={onClose}
+        onShow={onShow}
       >
-        <View style={m.sheet}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={m.overlay} />
+        </TouchableWithoutFeedback>
 
-          {/* header */}
-          <View style={m.hdr}>
-            <Ionicons name="megaphone" size={20} color={C.blue} />
-            <Text style={m.hdrTxt}>Send Emergency Alert</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={22} color={C.t2} />
-            </TouchableOpacity>
-          </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={m.kavWrap}
+          pointerEvents="box-none"
+        >
+          <View style={m.sheet}>
 
-          <ScrollView style={m.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-
-            {/* pickers row */}
-            <View style={[m.row, { zIndex: 20 }]}>
-              <LevelPicker
-                value={form.level}
-                onChange={v => set('level', v)}
-                open={openPicker === 'level'}
-                onToggle={() => togglePicker('level')}
-              />
-              <ZonePicker
-                value={form.zone}
-                onChange={v => set('zone', v)}
-                open={openPicker === 'zone'}
-                onToggle={() => togglePicker('zone')}
-              />
+            {/* header */}
+            <View style={m.hdr}>
+              <Ionicons name="megaphone" size={20} color={C.blue} />
+              <Text style={m.hdrTxt}>Send Emergency Alert</Text>
+              <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={22} color={C.t2} />
+              </TouchableOpacity>
             </View>
 
-            {/* message */}
-            <Text style={m.label}>ALERT MESSAGE *</Text>
-            <TextInput
-              ref={msgInputRef}
-              style={m.msgInput}
-              value={form.message}
-              onChangeText={v => set('message', v)}
-              placeholder="e.g. FLOOD WARNING: Water level critically high..."
-              placeholderTextColor={C.t3}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
+            <ScrollView style={m.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-            {/* SMS recipients */}
-            <View style={m.smsHdr}>
-              <Ionicons name="phone-portrait-outline" size={14} color={C.t3} />
-              <Text style={m.label2}>SMS RECIPIENTS</Text>
-              <Text style={m.optional}>(optional)</Text>
-            </View>
-
-            <TouchableOpacity style={m.selBar} onPress={() => setShowResidents(p => !p)} activeOpacity={0.8}>
-              <Text style={m.selTxt}>
-                {selected.length > 0
-                  ? `${selected.length} resident(s) selected`
-                  : 'Select residents to receive SMS...'}
-              </Text>
-              <Ionicons name={showResidents ? 'chevron-up' : 'chevron-down'} size={14} color={C.t3} />
-            </TouchableOpacity>
-
-            {showResidents && (
-              <>
-            <View style={m.resSearch}>
-              <Ionicons name="search" size={14} color={C.t3} />
-              <TextInput
-                ref={resSearchRef}
-                style={m.resSearchInput}
-                value={resQ}
-                onChangeText={setResQ}
-                placeholder="Search residents..."
-                placeholderTextColor={C.t3}
-              />
-            </View>
-
-            <TouchableOpacity style={m.selectAllRow} onPress={toggleAll} activeOpacity={0.7}>
-              <View style={[m.checkbox, selected.length === filteredRes.length && filteredRes.length > 0 && m.checkboxOn]}>
-                {selected.length === filteredRes.length && filteredRes.length > 0 && (
-                  <Ionicons name="checkmark" size={11} color="#fff" />
-                )}
+              {/* pickers row */}
+              <View style={[m.row, { zIndex: 20 }]}>
+                <LevelPicker
+                  value={form.level}
+                  onChange={v => set('level', v)}
+                  open={openPicker === 'level'}
+                  onToggle={() => togglePicker('level')}
+                />
+                <ZonePicker
+                  value={form.zone}
+                  onChange={v => set('zone', v)}
+                  open={openPicker === 'zone'}
+                  onToggle={() => togglePicker('zone')}
+                />
               </View>
-              <Text style={m.selectAllTxt}>Select All ({filteredRes.length} {filteredRes.length === 1 ? 'resident' : 'residents'})</Text>
-            </TouchableOpacity>
 
-            {filteredRes.map(r => {
-              const checked = selected.includes(r.id);
-              const statusVal = r.evacuationStatus || '';
-              const statusColor = STATUS_COLOR[statusVal] || C.t3;
-              return (
-                <TouchableOpacity key={r.id} style={m.resRow} onPress={() => toggleRes(r.id)} activeOpacity={0.7}>
-                  <View style={[m.checkbox, checked && m.checkboxOn]}>
-                    {checked && <Ionicons name="checkmark" size={11} color="#fff" />}
-                  </View>
-                  <View style={m.avatar}>
-                    <Text style={m.avatarTxt}>{(r.name || '?')[0].toUpperCase()}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={m.resName}>{r.name}</Text>
-                    <Text style={m.resSub}>{r.zone} · {r.contact || 'no contact'}</Text>
-                  </View>
-                  {statusVal ? (
-                    <View style={[m.statusBadge, { borderColor: statusColor }]}>
-                      <Text style={[m.statusTxt, { color: statusColor }]}>{statusVal.toUpperCase()}</Text>
+              {/* message */}
+              <Text style={m.label}>ALERT MESSAGE *</Text>
+              <TextInput
+                ref={msgInputRef}
+                style={m.msgInput}
+                value={form.message}
+                onChangeText={v => set('message', v)}
+                placeholder="e.g. FLOOD WARNING: Water level critically high..."
+                placeholderTextColor={C.t3}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+
+              {/* Email Recipients — Resident Picker */}
+              <View style={m.emailHdr}>
+                <Ionicons name="mail-outline" size={14} color={C.t3} />
+                <Text style={m.label2}>EMAIL RECIPIENTS</Text>
+                <Text style={m.optional}>(optional)</Text>
+              </View>
+
+              {/* Selected resident chips */}
+              {selectedResidents.length > 0 && (
+                <View style={rp.chips}>
+                  {selectedResidents.map(r => (
+                    <View key={String(r.id)} style={rp.chip}>
+                      <Text style={rp.chipTxt} numberOfLines={1}>{r.name}</Text>
+                      <TouchableOpacity onPress={() => removeResident(r)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                        <Ionicons name="close-circle" size={14} color={C.blue} />
+                      </TouchableOpacity>
                     </View>
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
+                  ))}
+                </View>
+              )}
 
-            <Text style={m.hint}>Select residents to receive SMS. Leave empty to skip SMS.</Text>
-              </>
-            )}
-            <View style={{ height: 16 }} />
-          </ScrollView>
+              {/* Pick residents button */}
+              <TouchableOpacity
+                style={[rp.pickBtn, eligibleCount === 0 && { opacity: 0.4 }]}
+                onPress={() => { Keyboard.dismiss(); setShowResPicker(true); }}
+                activeOpacity={0.8}
+                disabled={eligibleCount === 0}
+              >
+                <Ionicons name="people-outline" size={16} color={C.blue} />
+                <Text style={rp.pickBtnTxt}>
+                  {selectedResidents.length > 0
+                    ? `${selectedResidents.length} resident${selectedResidents.length > 1 ? 's' : ''} selected — tap to change`
+                    : eligibleCount > 0
+                      ? `Choose from ${eligibleCount} resident${eligibleCount > 1 ? 's' : ''} with email`
+                      : 'No residents have email on file'}
+                </Text>
+                <Ionicons name="chevron-forward" size={14} color={C.t3} />
+              </TouchableOpacity>
 
-          {/* footer */}
-          <View style={m.footer}>
-            <TouchableOpacity style={m.cancelBtn} onPress={onClose} activeOpacity={0.8}>
-              <Text style={m.cancelTxt}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[m.sendBtn, saving && { opacity: 0.5 }]}
-              onPress={handleSave}
-              disabled={saving}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="send" size={16} color="#fff" />
-              <Text style={m.sendTxt}>
-                {saving ? 'Sending…' : selected.length > 0 ? `Send Alert + SMS (${selected.length})` : 'Send Alert'}
+              <Text style={m.hint}>
+                {selectedResidents.length > 0
+                  ? `Alert will be emailed to ${selectedResidents.length} resident${selectedResidents.length > 1 ? 's' : ''}.`
+                  : 'Leave empty to skip email notification.'}
               </Text>
-            </TouchableOpacity>
-          </View>
 
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+              <View style={{ height: 16 }} />
+            </ScrollView>
+
+            {/* footer */}
+            <View style={m.footer}>
+              <TouchableOpacity style={m.cancelBtn} onPress={onClose} activeOpacity={0.8}>
+                <Text style={m.cancelTxt}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[m.sendBtn, saving && { opacity: 0.5 }]}
+                onPress={handleSave}
+                disabled={saving}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="send" size={16} color="#fff" />
+                <Text style={m.sendTxt}>
+                  {saving ? 'Sending…' : selectedResidents.length > 0 ? 'Send Alert + Email' : 'Send Alert'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Resident picker (rendered outside the bottom sheet modal) */}
+      <ResidentPickerModal
+        visible={showResPicker}
+        onClose={() => setShowResPicker(false)}
+        residents={residents}
+        selected={selectedResidents}
+        onToggle={toggleResident}
+      />
+    </>
   );
 }
 
@@ -403,7 +482,6 @@ function AlertPreviewModal({ alert, onClose }) {
 }
 
 
-
 export default function AlertsScreen() {
   const insets = useSafeAreaInsets();
   const { alerts, addAlert, deleteAlert, reload, residents } = useApp();
@@ -413,8 +491,15 @@ export default function AlertsScreen() {
   const [initForm, setInit] = useState(null);
   const [delId, setDelId]       = useState(null);
   const [previewAlert, setPreviewAlert] = useState(null);
-  const [saving, setSaving]     = useState(false); 
+  const [saving, setSaving]     = useState(false);
   const [busy, setBusy]         = useState(false);
+
+  // ✅ FIX: reload fresh data every time screen is opened
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload])
+  );
 
   const list = alerts.filter(a =>
     !q || (a.message + a.zone + a.level).toLowerCase().includes(q.toLowerCase())
@@ -425,8 +510,7 @@ export default function AlertsScreen() {
     setShow(true);
   }
 
-  
-  async function handleSave(form, selectedResidents, selectedNames) {
+  async function handleSave(form, emailList, emailNames) {
     setSaving(true);
     try {
       await addAlert(
@@ -434,9 +518,9 @@ export default function AlertsScreen() {
           level: form.level,
           zone: form.zone,
           message: form.message,
-          smsCount: selectedResidents.length,
-          recipients_count: selectedResidents.length,
-          recipients: selectedNames,
+          emailCount: emailList.length,
+          recipients_count: emailList.length,
+          recipients: emailList,  // ✅ FIX: actual email addresses, not names
         },
         user?.name || 'System'
       );
@@ -519,14 +603,14 @@ export default function AlertsScreen() {
         </View>
       </ScrollView>
 
-      {/* modal */}
+      {/* modals */}
       <SendAlertModal
         visible={show}
         onClose={() => setShow(false)}
         onSave={handleSave}
         saving={saving}
         initialForm={initForm}
-        residents={residents || []}
+        residents={residents}
       />
 
       <AlertPreviewModal alert={previewAlert} onClose={() => setPreviewAlert(null)} />
@@ -547,18 +631,15 @@ const s = StyleSheet.create({
   pageTitle:   { fontSize: 17, fontWeight: '800', color: C.t1 },
   pageSub:     { fontSize: 11, color: C.t3, marginTop: 3, lineHeight: 16 },
   sendBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.blue, borderRadius: 50, paddingHorizontal: 18, paddingVertical: 10 },
-
   sendBtnTxt:  { color: '#fff', fontWeight: '800', fontSize: 13 },
   statsRow:    { flexDirection: 'row', gap: 10, paddingHorizontal: 12, paddingVertical: 14 },
   section:     { marginHorizontal: 12, marginTop: 12, marginBottom: 12, backgroundColor: C.card, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: C.border },
   secHdr:      { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
-
   secTitle:    { fontSize: 11, fontWeight: '700', color: C.t3, letterSpacing: 0.5 },
   countBadge:  { backgroundColor: C.el, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, marginLeft: 4 },
   countTxt:    { fontSize: 11, fontWeight: '700', color: C.t2 },
   quickGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   quickCard:   { width: '47%', backgroundColor: C.el, borderRadius: 10, borderWidth: 1, alignItems: 'center', paddingVertical: 20, gap: 8 },
-
   quickLabel:  { fontSize: 13, fontWeight: '700', textAlign: 'center' },
   searchWrap:  { flexDirection: 'row', alignItems: 'center', marginHorizontal: 12, marginBottom: 12, backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, height: 42 },
   searchInput: { flex: 1, color: C.t1, fontSize: 13 },
@@ -611,39 +692,52 @@ const pk = StyleSheet.create({
 });
 
 const m = StyleSheet.create({
-  overlay:       { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
-  kavWrap:       { flex: 1, justifyContent: 'flex-end' },
-  sheet:         { backgroundColor: C.card, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: '90%' },
-  hdr:           { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border },
+  overlay:    { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  kavWrap:    { flex: 1, justifyContent: 'flex-end' },
+  sheet:      { backgroundColor: C.card, borderTopLeftRadius: 18, borderTopRightRadius: 18, maxHeight: '90%' },
+  hdr:        { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 18, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: C.border },
+  hdrTxt:     { flex: 1, fontSize: 16, fontWeight: '800', color: C.t1 },
+  body:       { paddingHorizontal: 18, paddingTop: 16 },
+  row:        { flexDirection: 'row', gap: 10, marginBottom: 14, zIndex: 10 },
+  label:      { fontSize: 10, fontWeight: '700', color: C.t3, letterSpacing: 0.4, marginBottom: 6 },
+  msgInput:   { backgroundColor: '#1a2030', borderRadius: 8, borderWidth: 1, borderColor: C.border, padding: 12, color: C.t1, fontSize: 13, minHeight: 90, marginBottom: 14 },
+  emailHdr:   { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
+  label2:     { fontSize: 10, fontWeight: '700', color: C.t3, letterSpacing: 0.4 },
+  optional:   { fontSize: 10, color: C.t3 },
+  hint:       { fontSize: 10, color: C.t3, textAlign: 'center', paddingVertical: 8 },
+  footer:     { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: 1, borderTopColor: C.border },
+  cancelBtn:  { flex: 1, backgroundColor: C.el, borderRadius: 10, alignItems: 'center', paddingVertical: 13 },
+  cancelTxt:  { fontSize: 14, fontWeight: '700', color: C.t2 },
+  sendBtn:    { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.blue, borderRadius: 10, paddingVertical: 13 },
+  sendTxt:    { fontSize: 14, fontWeight: '700', color: '#fff' },
+});
 
-  hdrTxt:        { flex: 1, fontSize: 16, fontWeight: '800', color: C.t1 },
-  body:          { paddingHorizontal: 18, paddingTop: 16 },
-  row:           { flexDirection: 'row', gap: 10, marginBottom: 14, zIndex: 10 },
-  label:         { fontSize: 10, fontWeight: '700', color: C.t3, letterSpacing: 0.4, marginBottom: 6 },
-  msgInput:      { backgroundColor: '#1a2030', borderRadius: 8, borderWidth: 1, borderColor: C.border, padding: 12, color: C.t1, fontSize: 13, minHeight: 90, marginBottom: 14 },
-  smsHdr:        { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
-  label2:        { fontSize: 10, fontWeight: '700', color: C.t3, letterSpacing: 0.4 },
-  optional:      { fontSize: 10, color: C.t3 },
-  selBar:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1a2030', borderRadius: 8, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8 },
-  selTxt:        { fontSize: 12, color: C.t3 },
-  resSearch:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1a2030', borderRadius: 8, borderWidth: 1, borderColor: C.border, paddingHorizontal: 10, height: 38, gap: 8, marginBottom: 6 },
-  resSearchInput:{ flex: 1, color: C.t1, fontSize: 13 },
-  selectAllRow:  { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border },
-  selectAllTxt:  { fontSize: 13, color: C.t1 },
-  checkbox:      { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: C.t3, alignItems: 'center', justifyContent: 'center' },
-  checkboxOn:    { backgroundColor: C.blue, borderColor: C.blue },
-  resRow:        { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border },
-  avatar:        { width: 34, height: 34, borderRadius: 17, backgroundColor: C.blue + '44', alignItems: 'center', justifyContent: 'center' },
-  avatarTxt:     { fontSize: 14, fontWeight: '700', color: C.blue },
-  resName:       { fontSize: 13, fontWeight: '700', color: C.t1 },
-  resSub:        { fontSize: 11, color: C.t3, marginTop: 1 },
-  statusBadge:   { borderWidth: 1, borderRadius: 4, paddingHorizontal: 7, paddingVertical: 3 },
-  statusTxt:     { fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
-  hint:          { fontSize: 10, color: C.t3, textAlign: 'center', paddingVertical: 10 },
-  footer:        { flexDirection: 'row', gap: 12, padding: 16, borderTopWidth: 1, borderTopColor: C.border },
-  cancelBtn:     { flex: 1, backgroundColor: C.el, borderRadius: 10, alignItems: 'center', paddingVertical: 13 },
-  cancelTxt:     { fontSize: 14, fontWeight: '700', color: C.t2 },
-  sendBtn:       { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.blue, borderRadius: 10, paddingVertical: 13 },
-
-  sendTxt:       { fontSize: 14, fontWeight: '700', color: '#fff' },
+const rp = StyleSheet.create({
+  overlay:     { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.65)' },
+  centerer:    { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  sheet:       { backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, width: '100%', maxHeight: '75%' },
+  hdr:         { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16, borderBottomWidth: 1, borderBottomColor: C.border },
+  hdrTxt:      { flex: 1, fontSize: 15, fontWeight: '800', color: C.t1 },
+  searchRow:   { flexDirection: 'row', alignItems: 'center', gap: 8, margin: 12, backgroundColor: '#1a2030', borderRadius: 8, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, height: 38 },
+  searchInput: { flex: 1, color: C.t1, fontSize: 13 },
+  list:        { maxHeight: 320 },
+  row:         { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: C.border },
+  rowSelected: { backgroundColor: C.blue + '0d' },
+  avatar:      { width: 34, height: 34, borderRadius: 17, backgroundColor: C.el, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  avatarTxt:   { fontSize: 14, fontWeight: '800', color: C.t2 },
+  name:        { fontSize: 13, fontWeight: '700', color: C.t1, marginBottom: 1 },
+  email:       { fontSize: 11, color: C.t3 },
+  check:       { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: C.border, backgroundColor: 'transparent', alignItems: 'center', justifyContent: 'center' },
+  checkSelected: { backgroundColor: C.blue, borderColor: C.blue },
+  footer:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderTopWidth: 1, borderTopColor: C.border },
+  selCount:    { fontSize: 12, color: C.t3, fontWeight: '600' },
+  doneBtn:     { backgroundColor: C.blue, borderRadius: 8, paddingHorizontal: 22, paddingVertical: 9 },
+  doneTxt:     { fontSize: 13, fontWeight: '800', color: '#fff' },
+  emptyWrap:   { alignItems: 'center', paddingVertical: 28, gap: 8 },
+  emptyTxt:    { fontSize: 13, color: C.t3 },
+  chips:       { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 10 },
+  chip:        { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.blue + '22', borderWidth: 1, borderColor: C.blue + '55', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5, maxWidth: 160 },
+  chipTxt:     { fontSize: 12, fontWeight: '700', color: C.blue, flexShrink: 1 },
+  pickBtn:     { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1a2030', borderRadius: 8, borderWidth: 1, borderColor: C.blue + '55', paddingHorizontal: 12, paddingVertical: 11, marginBottom: 6 },
+  pickBtnTxt:  { flex: 1, fontSize: 12, color: C.t2, fontWeight: '600' },
 });

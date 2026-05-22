@@ -1,5 +1,5 @@
-export const API_BASE_URL = 'http://192.168.1.21:8080';  
-export const ML_API_URL  = 'http://192.168.1.21:8080';  
+export const API_BASE_URL = 'http://192.168.68.114:8080';  
+export const ML_API_URL  = 'http://192.168.68.114:8080';  
 
 export const ZONES      = ['Zone 1','Zone 2','Zone 3','Zone 4','Zone 5','Zone 6'];
 export const TYPES      = ['Flood','Fire','Earthquake','Landslide','Storm'];
