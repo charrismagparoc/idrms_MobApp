@@ -2,6 +2,13 @@
 ### Integrated Disaster Risk Management System
 **Barangay Kauswagan, Cagayan de Oro City**
 
+https://idrms-fastapi-ml.onrender.com (FastAPI)
+
+https://idrms-lab5.vercel.app/  (web)
+
+https://drive.google.com/file/d/1ysWtv-iQ3L218nssrkQOotvtiZmh6_xX/view?fbclid=IwY2xjawSCU6BleHRuA2FlbQIxMABicmlkETFIVTVVUlRWaWNvNzc4MXRDc3J0YwZhcHBfaWQQMjIyMDM5MTc4ODIwMDg5MgABHo6KEE00nQcl2a-lSPMCEX2VNLRJZEuaK_hiBKR9w0oZKXTlx2-YDOcoRZWV_aem_NFPjSZrvFw8q8vTGujXIiQ (mobapp)
+
+
 ---
 
 ## 1. Project Description
